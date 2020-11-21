@@ -1,0 +1,17 @@
+#defining individual class
+#Motor order defined in front, top, bottom
+
+class individual:
+    def __init__(self):
+        #defining genes
+        self.genes = {
+            'amplitude': [],
+            'frequency': [],
+            'phase': [],
+            'offset': []
+        }
+        #defining fluctuation cost
+        self.j_fluc = 0
+
+        #defining motor revolutions
+        self.revolutions = [[], [], []]
