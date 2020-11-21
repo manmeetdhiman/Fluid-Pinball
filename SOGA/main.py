@@ -22,7 +22,6 @@ tsteps = 250
 
 #Generation 0
 population = genesis(size)
-population = genes(population)
 population = response(population,dt,tsteps)
 population = cost_calc(gen,population)
 
