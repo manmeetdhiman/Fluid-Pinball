@@ -1,5 +1,5 @@
-#PI Controller and DC Motor Model Only for analysis
-# imports
+#Motor Model Only For Analysis
+#Imports
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
@@ -7,10 +7,9 @@ from scipy.integrate import odeint
 
 
 #Define input parameters here
-w_desired = 150 #rad/s   Step input angular velocity
+V_input = 36  #step input voltage
 dt = 5e-4
-tsteps = 250
-
+tsteps = 100
 
 
 #Simulation
@@ -24,7 +23,7 @@ R = 1.56  # ohms
 V_max = 36
 V_min = -V_max
 
-#intial conditions
+# intial conditions
 i0 = 0
 w0 = 0
 
@@ -32,23 +31,9 @@ w0 = 0
 tf = dt * (tsteps - 1)
 t_sim = np.linspace(0, tf, tsteps)
 
-#PID parameters
-error_s = np.zeros(tsteps)
-V_bias = 0
-tau_i = 30
-sum_int = 0.0
-
-#Tunable parameters
-Kp = 0.5
-Ki = Kp / tau_i
-
-#PI Input
-w_des = np.zeros(tsteps)
-w_des[11:] = w_desired
-
 # Motor input
 V_in = np.zeros(tsteps)
-
+V_in[11:] = V_input
 
 # ODE Output Storage
 w_s = np.zeros(tsteps)
@@ -63,28 +48,9 @@ def motor_mechanical(w, t, i):
     dw_dt = (Kt * i - b * w) / J
     return dw_dt
 
-# sim_loop
+# # Motor actuation sim_loop
 for n in range(tsteps - 1):
 
-    # PID Control
-    error = w_des[n + 1] - w0
-    error_s[n + 1] = error
-
-    sum_int = sum_int + error * dt
-    V_PID = V_bias + Kp * error + Ki * sum_int
-
-    # anti-integral windup
-    if V_PID > V_max:
-        V_PID = V_max
-        sum_int = sum_int - error * dt
-    if V_PID < V_min:
-        V_PID = V_min
-        sum_int = sum_int - error * dt
-
-    # PID Data storage
-    int_s = sum_int
-    V_in[n] = V_PID
-    # Motor Actuation
     V = V_in[n]
     t_range = [t_sim[n], t_sim[n + 1]]
 
@@ -95,37 +61,34 @@ for n in range(tsteps - 1):
     w0 = w[-1]
     w_s[n + 1] = w0
 
+
 # plotting
 fig = plt.subplots(2, 1, constrained_layout=False)
 
-# PID input
-plt.subplot(2, 2, 1)
-plt.plot(t_sim, w_des)
-plt.title('Desired Angular Velocity (rad/s)')
-plt.ylabel('Angular velocity (rad/s)')
-plt.xlabel('time(s)')
-
-# error
-plt.subplot(2, 2, 2)
-plt.plot(t_sim, error_s)
-plt.title('Error')
-plt.ylabel('error')
-plt.xlabel('time(s)')
-
 # DC Motor input
-plt.subplot(2, 2, 3)
+plt.subplot(3, 1, 1)
 plt.plot(t_sim, V_in)
 plt.title('PI Voltage Output')
 plt.ylabel('Voltage Input (V)')
 plt.xlabel('time(s)')
 
-# DC Motor response
-plt.subplot(2, 2, 4)
+
+# DC Motor response (RPMs)
+plt.subplot(3, 1, 2)
 plt.plot(t_sim, w_s)
-plt.title('DC Motor Response')
+plt.title('DC Motor Response (rad/s)')
 plt.ylabel('Angular Velocity (rad/s)')
 plt.xlabel('time (s)')
 
+# DC Motor response (RPMs)
+plt.subplot(3, 1, 3)
+plt.plot(t_sim, w_s * 9.5493)
+plt.title('DC Motor Response (RPMs)')
+plt.ylabel('Angular Velocity (RPMs)')
+plt.xlabel('time (s)')
+
+
 plt.show()
+
 
 
