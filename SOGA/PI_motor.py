@@ -3,14 +3,24 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
+import math
 
-
-
+w_max = 1047.1975513824 #rad/s
+f = 16#Hz
 #Define input parameters here
-w_desired = 150 #rad/s   Step input angular velocity
+A = w_max
+omega = f*6.28
 dt = 5e-4
-tsteps = 250
+tsteps = 100
 
+# simulation time parameters
+tf = dt * (tsteps - 1)
+t_sim = np.linspace(0, tf, tsteps)
+
+w_desired =  np.zeros(tsteps) #rad/s   Step input angular velocity
+
+for n in range(len(t_sim)):
+    w_desired[n] = A*math.sin(omega*t_sim[n])
 
 
 #Simulation
@@ -19,7 +29,7 @@ Ke = 0.021199438  # V/rad/s
 Kt = 0.0141937  # Nm/A
 b = 0.0001011492  # Nm/rad/s
 L = 0.00075  # H
-J = 0.00000109445  # kgm^2
+J = 0.00000109445# kgm^2
 R = 1.56  # ohms
 V_max = 36
 V_min = -V_max
@@ -28,23 +38,20 @@ V_min = -V_max
 i0 = 0
 w0 = 0
 
-# simulation time parameters
-tf = dt * (tsteps - 1)
-t_sim = np.linspace(0, tf, tsteps)
 
 #PID parameters
 error_s = np.zeros(tsteps)
 V_bias = 0
-tau_i = 30
 sum_int = 0.0
 
 #Tunable parameters
-Kp = 0.5
-Ki = Kp / tau_i
-
+Kp = 0.270727147578817
+Ki = 50.0897752327866
+Kd = 0.000141076220179068
+N = 248711.202620588 #Filter coefficient for filtered derivative
 #PI Input
 w_des = np.zeros(tsteps)
-w_des[11:] = w_desired
+w_des = w_desired
 
 # Motor input
 V_in = np.zeros(tsteps)
@@ -71,7 +78,8 @@ for n in range(tsteps - 1):
     error_s[n + 1] = error
 
     sum_int = sum_int + error * dt
-    V_PID = V_bias + Kp * error + Ki * sum_int
+    de_dt = (error_s[n+1] - error_s[n])/dt
+    V_PID = V_bias + Kp * error + Ki * sum_int #+ (N*Kd)/(1 + N*sum_int) #+ Kd*de_dt
 
     # anti-integral windup
     if V_PID > V_max:
@@ -95,36 +103,34 @@ for n in range(tsteps - 1):
     w0 = w[-1]
     w_s[n + 1] = w0
 
+#response charachteristics
+'''response_error = ((w_s[-1] - w_desired)/w_desired) *100
+p_overshoot = ((max(w_s) - w_desired)/w_desired) *100
+
+print(f'response_error is: {response_error} %' )
+if p_overshoot < 0:
+    print(f'No overshoot')
+else:
+    print(f'percent overshoot is: {p_overshoot} %')
 # plotting
-fig = plt.subplots(2, 1, constrained_layout=False)
+fig = plt.subplots(2, 1, constrained_layout=False)'''
 
-# PID input
-plt.subplot(2, 2, 1)
-plt.plot(t_sim, w_des)
-plt.title('Desired Angular Velocity (rad/s)')
-plt.ylabel('Angular velocity (rad/s)')
-plt.xlabel('time(s)')
+# DC Motor command and response
+plt.subplot(2, 1, 1)
+plt.plot(t_sim, w_s,t_sim,w_des)
+plt.title('DC Motor Response')
+plt.ylabel('Angular Velocity (rad/s)')
+plt.xlabel('time (s)')
 
-# error
-plt.subplot(2, 2, 2)
-plt.plot(t_sim, error_s)
-plt.title('Error')
-plt.ylabel('error')
-plt.xlabel('time(s)')
 
 # DC Motor input
-plt.subplot(2, 2, 3)
+plt.subplot(2, 1, 2)
 plt.plot(t_sim, V_in)
 plt.title('PI Voltage Output')
 plt.ylabel('Voltage Input (V)')
 plt.xlabel('time(s)')
 
-# DC Motor response
-plt.subplot(2, 2, 4)
-plt.plot(t_sim, w_s)
-plt.title('DC Motor Response')
-plt.ylabel('Angular Velocity (rad/s)')
-plt.xlabel('time (s)')
+
 
 plt.show()
 
