@@ -20,7 +20,7 @@ freq_l_lim = 27.2690 #rad/s or 4.34 Hz
 #rastrigin parameters
 bound_ras = 5.12
 mockfreq_u = 5.12
-mockfreq_l = 2.5
+mockfreq_l = mockfreq_u / 2
 
 
 
@@ -32,8 +32,8 @@ u_bound= {
     'offset': omega_lim + offset
 }
 l_bound= {
-    'amplitude': -omega_lim ,
-    'frequency': freq_l_lim,
+    'amplitude': -omega_lim,
+    'frequency': mockfreq_l,
     'phase': -phase_lim,
     'offset': -omega_lim
 }
@@ -155,8 +155,10 @@ def cross_mut(mate_pool,mut_prob,mut_type,g,G,limit):
             motor = random.choice(range(3))
             key = random.choice(gene_keys)
             mut_gene = child.genes[key][motor] + tau * (u_bound[key] - l_bound[key]) * (1 - r ** (g / G))
-            if key == 'frequency' and mut_gene < l_bound[key]:
-                gene = 0
+            if key == 'frequency':
+                mut_gene = child.genes[key][motor] + tau * (u_bound[key] - 0) * (1 - r ** (g / G))
+                if mut_gene < l_bound[key]:
+                    gene = 0
             child.genes[key][motor] = mut_gene
     return child
 
