@@ -29,12 +29,13 @@ def PI_motor(w_des,dt,tsteps):
     #PID parameters
     error_s = np.zeros(tsteps)
     V_bias = 0
-    tau_i = 30
     sum_int = 0.0
 
     #Tunable parameters
-    Kp = 4
-    Ki = Kp / tau_i
+    Kp = 0.270727147578817
+    Ki = 50.0897752327866
+    Kd = 0.000141076220179068
+    N = 248711.202620588
 
     # Motor input
     V_in = np.zeros(tsteps)
