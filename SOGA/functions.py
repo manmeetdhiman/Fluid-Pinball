@@ -82,7 +82,7 @@ def fitness(population):
     return parents
 
 #Major Mating
-def mate(parents,mut_prob,g,G,limit,n_genes):
+def mate(parents,mut_prob,g,G,limit,n_genes = 1):
     children = []
     mate_pool = selection(parents)
     while len(children) != len(parents):
@@ -110,7 +110,7 @@ def selection(parents):
     return mate_pool
 
 #Crossover and Mutation
-def cross_mut(mate_pool,mut_prob,mut_type,g,G,limit,n_genes):
+def cross_mut(mate_pool,mut_prob,mut_type,g,G,limit,n_genes = 1):
     child = individual()
     p0 = 0
     p1 = 0
@@ -262,7 +262,7 @@ def fitness_ras(population):
     return parents
 
 #mating
-def mate_ras(parents,mut_prob,mut_type,g,G,limit,n_genes):
+def mate_ras(parents,mut_prob,mut_type,g,G,limit,n_genes = 1):
     children = []
     mate_pool = selection_ras(parents)
     while len(children) != len(parents):

@@ -24,7 +24,6 @@ max_gen = 5
 size = int(max_ind/max_gen)
 mut_prob = 0.1
 mut_type = 'all' #mutation type - all,gene,motor,n_genes
-n_genes = 1
 fittest = []
 search_limit = 5000
 
@@ -65,8 +64,8 @@ while gen <= max_gen:
     if cost_fittest <= target_cost:
         break
     gen += 1
-    children = mate(parents, mut_prob, mut_type, gen, max_gen, search_limit,n_genes)
-    #children = mate_ras(parents, mut_prob, mut_type, gen, max_gen, search_limit,n_genes)
+    children = mate(parents, mut_prob, mut_type, gen, max_gen, search_limit)
+    #children = mate_ras(parents, mut_prob, mut_type, gen, max_gen, search_limit)
 
     if children == None:
         break
@@ -89,8 +88,8 @@ if gen < max_gen:
 else:
     print(f'Search completed for defined generations')
 
-minimization = fittest[0].j_fluc - fittest[-1].j_fluc
-#minimization = fittest[0].ras - fittest[-1].ras
+#minimization = fittest[0].j_fluc - fittest[-1].j_fluc
+minimization = fittest[0].ras - fittest[-1].ras
 
 percent_improvement = (minimization/fittest[0].j_fluc)*100
 #percent_improvement = abs((minimization/fittest[0].ras)*100)
