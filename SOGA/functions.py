@@ -50,9 +50,8 @@ gene_keys = ['amplitude','frequency','phase','offset']
 #first generation
 def genesis(size):
     population = [individual() for _ in range(size)]
-    population = genes(population)
+    population = genes(population = population)
     return population
-
 
 #Gene population
 def genes(population):
@@ -66,7 +65,6 @@ def genes(population):
                     continue
                 individual.genes[key].append(random.uniform(possible_genes[key][0],possible_genes[key][1]))
     return population
-
 
 #cost assignment function
 def cost_calc(gen, population):
@@ -82,11 +80,11 @@ def fitness(population):
     return parents
 
 #Major Mating
-def mate(parents,mut_prob,g,G,limit,n_genes = 1):
+def mate(parents,mut_prob,mut_type,g,G,limit,n_genes = 1):
     children = []
-    mate_pool = selection(parents)
+    mate_pool = selection(parents = parents)
     while len(children) != len(parents):
-        child = cross_mut(mate_pool,mut_prob,g,G,limit,n_genes)
+        child = cross_mut(mate_pool = mate_pool,mut_prob = mut_prob,g = g,G = G,limit = limit,n_genes = n_genes)
         if child == None:
             return None
         children.append(child)
@@ -217,7 +215,6 @@ def cross_mut(mate_pool,mut_prob,mut_type,g,G,limit,n_genes = 1):
                         child.genes[key][motor] = mut_gene
     return child
 
-
 #response
 def response(population,dt,tsteps):
     tf  = dt*tsteps
@@ -236,10 +233,8 @@ def response(population,dt,tsteps):
                 w_desired = A*math.sin(f*t + ph) + offset
                 individual.revolutions[motor].append(w_desired)
             #updating revolutions to realistic motor response
-            individual.revolutions[motor] = PI_motor(individual.revolutions[motor],dt,tsteps)
+            individual.revolutions[motor] = PI_motor(w_des = individual.revolutions[motor],dt = dt,tsteps = tsteps)
     return population
-
-
 
 #Rastrigin Functions, cross_mut is common for both
 #cost
@@ -264,10 +259,9 @@ def fitness_ras(population):
 #mating
 def mate_ras(parents,mut_prob,mut_type,g,G,limit,n_genes = 1):
     children = []
-    mate_pool = selection_ras(parents)
+    mate_pool = selection_ras(parents = parents)
     while len(children) != len(parents):
-
-        child = cross_mut(mate_pool,mut_prob,mut_type,g,G,limit,n_genes)
+        child = cross_mut(mate_pool = mate_pool,mut_prob = mut_prob,mut_type = mut_type,g = g,G = G,limit = limit,n_genes = n_genes)
         if child == None:
             return None
         children.append(child)
