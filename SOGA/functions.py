@@ -84,7 +84,7 @@ def mate(parents,mut_prob,mut_type,g,G,limit,n_genes = 1):
     children = []
     mate_pool = selection(parents = parents)
     while len(children) != len(parents):
-        child = cross_mut(mate_pool = mate_pool,mut_prob = mut_prob,g = g,G = G,limit = limit,n_genes = n_genes)
+        child = cross_mut(mate_pool = mate_pool,mut_prob = mut_prob,mut_type = mut_type,g = g,G = G,limit = limit,n_genes = n_genes)
         if child == None:
             return None
         children.append(child)
