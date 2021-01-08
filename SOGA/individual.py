@@ -12,6 +12,6 @@ class individual:
         }
         #defining fluctuation cost
         self.j_fluc = 0
-
+        self.ras = 0
         #defining motor revolutions
         self.revolutions = [[], [], []]

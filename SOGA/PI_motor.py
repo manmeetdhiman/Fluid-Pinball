@@ -4,14 +4,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 import math
+import matplotlib.font_manager as fm
+plotfont = {'fontname':'Times New Roman'}
 
 w_max = 1047.1975513824 #rad/s
-f = 16#Hz
+f = 50#Hz
 #Define input parameters here
 A = w_max
 omega = f*6.28
 dt = 5e-4
-tsteps = 100
+tsteps = 50
 
 # simulation time parameters
 tf = dt * (tsteps - 1)
@@ -115,22 +117,26 @@ else:
 # plotting
 fig = plt.subplots(2, 1, constrained_layout=False)'''
 
-# DC Motor command and response
-plt.subplot(2, 1, 1)
-plt.plot(t_sim, w_s,t_sim,w_des)
-plt.title('DC Motor Response')
-plt.ylabel('Angular Velocity (rad/s)')
-plt.xlabel('time (s)')
+font = fm.FontProperties(family='Times New Roman',style='normal',size = 18)
 
+figure,axes = plt.subplots(nrows = 1, ncols =2)
+# DC Motor command and response
+plt.subplot(1, 2, 1)
+DCMotor_command = plt.plot(t_sim, w_s,label = 'Response')
+DCMotor_reponse = plt.plot(t_sim,w_des,label = 'Command')
+#plt.title('Ideal DC Motor Response',**plotfont)
+plt.ylabel('Angular Velocity (rad/s)',**plotfont)
+plt.xlabel('time (s)',**plotfont)
+plt.legend(prop=font)
 
 # DC Motor input
-plt.subplot(2, 1, 2)
-plt.plot(t_sim, V_in)
-plt.title('PI Voltage Output')
-plt.ylabel('Voltage Input (V)')
-plt.xlabel('time(s)')
+plt.subplot(1, 2, 2)
+PI_voltage = plt.plot(t_sim, V_in)
 
+plt.ylabel('Voltage  (V)',**plotfont)
+plt.xlabel('time (s)',**plotfont)
 
+figure.tight_layout()
 
 plt.show()
 
