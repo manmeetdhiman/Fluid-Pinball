@@ -353,7 +353,7 @@ def CFD_Run(iteration_ID, action_counter, time_step_start, time_step_end, mot_da
 
 
 class Iteration():
-    def __init__(self, iteration_ID=1, shedding_freq=8.64, num_actions=25, dur_actions=0.2,
+    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=25, dur_actions=0.2,
                  CFD_timestep=5e-4, mot_timestep=8e-4, dur_ramps=0.04, free_stream_vel=1.2, sampling_periods=2.0):
 
         self.iteration_ID = iteration_ID
@@ -609,7 +609,9 @@ class Iteration():
         self.top_cyl_RPS_PI.extend(top_cyl_RPS_temp_CFD)
         self.bot_cyl_RPS_PI.extend(bot_cyl_RPS_temp_CFD)
 
-        mot_data = {'revolutions': [front_cyl_RPS_temp_CFD, top_cyl_RPS_temp_CFD, bot_cyl_RPS_temp_CFD]}
+        mot_data = {'revolutions': [front_cyl_RPS_temp_CFD, top_cyl_RPS_temp_CFD, bot_cyl_RPS_temp_CFD]
+            , 'freq':[], 'amp':[], 'offset':[], 'phase':[]}
+
 
         return mot_data
 
@@ -706,6 +708,8 @@ if load_weights:
     filename_actor = 'Actor_Policy_Number_' + str(policy_num)
     filename_critic = 'Critic_Policy_Number_' + str(policy_num)
     ppo_agent._load_weights(filename_actor, filename_critic)
+
+# Main loop that goes through the policies, episodes, iterations
 
 for i in range(num_policies):
     Iterations = []
