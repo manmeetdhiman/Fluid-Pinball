@@ -514,9 +514,9 @@ class Iteration():
         return array_B
 
     def calculate_mot_data(self, action):
-        front_cyl_RPS_ramp = action[0] * 445
-        top_cyl_RPS_ramp = action[1] * 445
-        bot_cyl_RPS_ramp = action[2] * 445
+        front_cyl_RPS_ramp = action[0] * 325
+        top_cyl_RPS_ramp = action[1] * 325
+        bot_cyl_RPS_ramp = action[2] * 325
         
         if front_cyl_RPS_ramp > 670:
             front_cyl_RPS_ramp = 670
@@ -531,7 +531,7 @@ class Iteration():
         if bot_cyl_RPS_ramp < -670:
             bot_cyl_RPS_ramp= -670
 
-        sampling_timesteps = self.CFD_timesteps_period - self.CFD_timesteps_ramp
+        sampling_timesteps = self.CFD_timesteps_action - self.CFD_timesteps_ramp
         if len(self.front_cyl_RPS_PI) < (sampling_timesteps):
             front_cyl_RPS_old = 0
             top_cyl_RPS_old = 0
