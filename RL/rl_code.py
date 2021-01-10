@@ -479,7 +479,7 @@ class Iteration():
 
         front_mot_state = front_mot_state / 1045.0
         top_mot_state = top_mot_state / 1045.0
-        bot_mod_state = bot_mot_state / 1045.0
+        bot_mot_state = bot_mot_state / 1045.0
 
         if self.action_counter <= 25:
             action_num_state = np.exp(0.2 * (self.action_counter - 25))
