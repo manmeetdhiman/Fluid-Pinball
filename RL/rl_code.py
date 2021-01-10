@@ -313,7 +313,7 @@ def Spline(times,rotations,des_times,k=3):
     return des_rotations
 
 
-def CFD_Run(iteration_ID, action_counter, time_step_start, time_step_end, mot_data):
+def CFD_Run(iteration_ID, action_num, time_step_start, time_step_end, mot_data):
     front_cyl = mot_data['revolutions'][0]
     top_cyl = mot_data['revolutions'][1]
     bot_cyl = mot_data['revolutions'][2]
@@ -353,8 +353,8 @@ def CFD_Run(iteration_ID, action_counter, time_step_start, time_step_end, mot_da
 
 
 class Iteration():
-    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=25, dur_actions=0.2,
-                 CFD_timestep=5e-4, mot_timestep=8e-4, dur_ramps=0.04, free_stream_vel=1.2, sampling_periods=2.0):
+    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=30, dur_actions=0.2,
+                 CFD_timestep=5e-4, mot_timestep=5e-4, dur_ramps=0.04, free_stream_vel=1.5, sampling_periods=2.0):
 
         self.iteration_ID = iteration_ID
         self.shedding_freq = shedding_freq
@@ -363,6 +363,8 @@ class Iteration():
         self.CFD_timestep = CFD_timestep
         self.mot_timestep = mot_timestep
         self.dur_ramps = dur_ramps
+        self.free_stream_vel = free_stream_vel
+        self.sampling_periods = sampling_periods
 
         self.states = []
         self.actions = []
@@ -390,15 +392,14 @@ class Iteration():
         self.time_step_start = 1
 
         self.shedding_period = 1 / self.shedding_freq
+        
         self.mot_timesteps_period = int(np.ceil(self.shedding_period / self.mot_timestep))
         self.mot_timesteps_action = int(np.ceil(self.mot_timesteps_period * self.dur_actions))
         self.mot_timesteps_ramp = int(np.ceil(self.mot_timesteps_period * self.dur_ramps))
+        
         self.CFD_timesteps_period = int(np.ceil(self.shedding_period / self.CFD_timestep))
         self.CFD_timesteps_action = int(np.ceil(self.CFD_timesteps_period * self.dur_actions))
         self.CFD_timesteps_ramp = int(np.ceil(self.CFD_timesteps_period * self.dur_ramps))
-
-        self.free_stream_vel = free_stream_vel
-        self.sampling_periods = sampling_periods
 
     def reset_state(self):
         top_sens_state = 1.2
@@ -414,7 +415,7 @@ class Iteration():
         return state
 
     def calculate_reward(self):
-        if len(self.top_sens_values) >= self.CFD_timesteps_period * self.sampling_periods:
+        if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods):
             sampling_timesteps = self.CFD_timesteps_period * self.sampling_periods
         else:
             sampling_timesteps = len(self.top_sens_values)
@@ -422,13 +423,9 @@ class Iteration():
         top_sens_var = np.var(self.top_sens_values[-sampling_timesteps:])
         mid_sens_var = np.var(self.mid_sens_values[-sampling_timesteps:])
         bot_sens_var = np.var(self.bot_sens_values[-sampling_timesteps:])
+        
         J_fluc = np.mean([top_sens_var, mid_sens_var, bot_sens_var])
         J_fluc = J_fluc / (self.free_stream_vel ** 2)
-
-        if len(self.front_cyl_RPS_PI) >= self.CFD_timesteps_period * self.sampling_periods:
-            sampling_timesteps = self.CFD_timesteps_period * self.sampling_periods
-        else:
-            sampling_timesteps = len(self.front_cyl_RPS_PI)
 
         J_act = 0
 
@@ -439,23 +436,25 @@ class Iteration():
 
         J_act = np.sqrt(J_act / (3 * sampling_timesteps))
         J_act = J_act / self.free_stream_vel * 0.01
+        
+        gamma = 0.02
+        reward = -1*(J_fluc + gamma * J_act)
 
-        if self.action_counter <= 25:
-            action_factor = np.exp(0.2 * (self.action_counter - 25))
+        if self.action_counter <= 20:
+            action_factor = np.exp(0.3 * (self.action_counter - 20))
         else:
             action_factor = 1.0
-
-        gamma = 0.02
-
-        reward = J_fluc + gamma * J_act
-        reward = -1 * reward * action_factor
+        
+        reward_scaling = 1.0
+        
+        reward = reward * action_factor * reward_scaling
 
         reward = np.array([reward])
 
         return reward
 
     def calculate_state(self):
-        if len(self.top_sens_values) >= self.CFD_timesteps_period * self.sampling_periods:
+        if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods):
             sampling_timesteps = self.CFD_timesteps_period * self.sampling_periods
         else:
             sampling_timesteps = len(self.top_sens_values)
@@ -463,15 +462,17 @@ class Iteration():
         top_sens_state = np.var(self.top_sens_values[-sampling_timesteps:])
         mid_sens_state = np.var(self.mid_sens_values[-sampling_timesteps:])
         bot_sens_state = np.var(self.bot_sens_values[-sampling_timesteps:])
+        
+        sens_state_scaling = 1.0
 
-        top_sens_state = top_sens_state / self.free_stream_vel
-        mid_sens_state = mid_sens_state / self.free_stream_vel
-        bot_sens_state = bot_sens_state / self.free_stream_vel
-
-        if len(self.front_cyl_RPS_PI) >= (self.CFD_timesteps_action - self.CFD_timesteps_ramp):
-            sampling_timesteps = self.CFD_timesteps_action - self.CFD_timesteps_ramp
+        top_sens_state = top_sens_state / (self.free_stream_vel**2) * sens_state_scaling
+        mid_sens_state = mid_sens_state / (self.free_stream_vel**2) * sens_state_scaling
+        bot_sens_state = bot_sens_state / (self.free_stream_vel**2) * sens_state_scaling
+        
+        if len(self.front_cyl_RPS_PI) >= (self.CFD_timesteps_action-self.CFD_timesteps_ramp):
+            sampling_timesteps=self.CFD_timesteps_action-self.CFD_timesteps_ramp
         else:
-            sampling_timesteps = len(self.front_cyl_RPS_PI)
+            sampling_timesteps=len(self.front_cyl_RPS_PI)
 
         front_mot_state = np.mean(self.front_cyl_RPS_PI[-sampling_timesteps:])
         top_mot_state = np.mean(self.top_cyl_RPS_PI[-sampling_timesteps:])
@@ -481,8 +482,8 @@ class Iteration():
         top_mot_state = top_mot_state / 1045.0
         bot_mot_state = bot_mot_state / 1045.0
 
-        if self.action_counter <= 25:
-            action_num_state = np.exp(0.2 * (self.action_counter - 25))
+        if self.action_counter <= 20:
+            action_num_state = np.exp(0.3 * (self.action_counter - 20))
         else:
             action_num_state = 1.0
 
@@ -513,9 +514,22 @@ class Iteration():
         return array_B
 
     def calculate_mot_data(self, action):
-        front_cyl_RPS_ramp = action[0] * 670
-        top_cyl_RPS_ramp = action[1] * 670
-        bot_cyl_RPS_ramp = action[2] * 670
+        front_cyl_RPS_ramp = action[0] * 445
+        top_cyl_RPS_ramp = action[1] * 445
+        bot_cyl_RPS_ramp = action[2] * 445
+        
+        if front_cyl_RPS_ramp > 670:
+            front_cyl_RPS_ramp = 670
+        if front_cyl_RPS_ramp < -670:
+            front_cyl_RPS_ramp= -670
+        if top_cyl_RPS_ramp > 670:
+            top_cyl_RPS_ramp = 670
+        if top_cyl_RPS_ramp < -670:
+            top_cyl_RPS_ramp= -670
+        if bot_cyl_RPS_ramp > 670:
+            bot_cyl_RPS_ramp = 670
+        if bot_cyl_RPS_ramp < -670:
+            bot_cyl_RPS_ramp= -670
 
         sampling_timesteps = self.CFD_timesteps_period - self.CFD_timesteps_ramp
         if len(self.front_cyl_RPS_PI) < (sampling_timesteps):
@@ -617,7 +631,7 @@ class Iteration():
 
     def run_iteration(self):
         state = self.reset_state()
-        for i in range(num_actions):
+        for actions in range(num_actions):
             self.action_counter += 1
 
             action, value, dist, mu, std = ppo_agent._get_action(state)
@@ -647,23 +661,22 @@ class Iteration():
 
             reward = self.calculate_reward()
             state = self.calculate_state()
-            self.rewards.append(reward)
-            self.next_states.append(state)
             if self.action_counter < self.num_actions:
                 is_terminal = np.array([1.0])
             else:
                 is_terminal = np.array([0.0])
-
+                
+            self.rewards.append(reward)
+            self.next_states.append(state)
             self.is_terminals.append(is_terminal)
 
             self.time_step_start = time_step_end + 1
 
     def save_iteration(self):
         iteration_results = {'iteration_ID': self.iteration_ID, 'states': self.states, 'actions': self.actions,
-                             'rewards': self.rewards, 'mus': self.mus, 'stds': self.stds,
-                             'is_terminals': self.is_terminals,
-                             'log_probs': self.log_probs, 'front_cyl_RPS': self.front_cyl_RPS,
-                             'top_cyl_RPS': self.top_cyl_RPS,
+                             'rewards': self.rewards, 'mus': self.mus, 'stds': self.stds, 'values': self.values,
+                             'is_terminals': self.is_terminals, 'log_probs': self.log_probs, 
+                             'front_cyl_RPS': self.front_cyl_RPS, 'top_cyl_RPS': self.top_cyl_RPS,
                              'bot_cyl_RPS': self.bot_cyl_RPS, 'front_cyl_RPS_PI': self.front_cyl_RPS_PI,
                              'top_cyl_RPS_PI': self.top_cyl_RPS_PI, 'bot_cyl_RPS_PI': self.bot_cyl_RPS_PI,
                              'top_sens_values': self.top_sens_values, 'mid_sens_values': self.mid_sens_values,
@@ -677,7 +690,7 @@ class Iteration():
 obs_dim = 7
 act_dim = 3
 gamma = 0.99
-lamda = 0.90
+lamda = 0.10
 entropy_coef = 0.001
 epsilon = 0.2
 value_range = 0.5
@@ -690,17 +703,17 @@ ppo_agent = PPO_Agent(obs_dim=obs_dim, act_dim=act_dim, gamma=gamma, lamda=lamda
                       epsilon=epsilon, value_range=value_range, num_epochs=num_epochs, batch_size=batch_size,
                       actor_lr=actor_lr, critic_lr=critic_lr)
 
-shedding_freq = 8.64
+shedding_freq = 8.42
 dur_actions = 0.20
 CFD_timestep = 5e-4
 mot_timestep = 5e-4
-dur_ramps = 0.05
-num_actions = 20
-num_policies = 150
-num_iterations = 3
+dur_ramps = 0.04
+num_actions = 25
+num_policies = 30
+num_iterations = 5
 total_rewards = []
 load_weights = False
-free_stream_vel = 1.2
+free_stream_vel = 1.5
 sampling_periods = 2
 
 if load_weights:
@@ -732,8 +745,8 @@ for i in range(num_policies):
         ppo_agent.values.extend(Iterations[j].values)
         ppo_agent.next_states.extend(Iterations[j].next_states)
         total_reward = np.sum(Iterations[j].rewards)
-        print('Iteration Number: ', Iterations[j].iteration_ID, ' Iteration Reward: ', total_reward)
         total_rewards.append(total_reward)
+        print('Iteration Number: ', Iterations[j].iteration_ID, ' Iteration Reward: ', total_reward)
 
     next_state = ppo_agent.next_states[-1]
     value = ppo_agent.critic.forward(torch.FloatTensor(next_state))
