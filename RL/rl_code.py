@@ -353,7 +353,7 @@ def CFD_Run(iteration_ID, action_num, time_step_start, time_step_end, mot_data):
 
 
 class Iteration():
-    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=30, dur_actions=0.2,
+    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=30, dur_actions=0.2105,
                  CFD_timestep=5e-4, mot_timestep=5e-4, dur_ramps=0.04, free_stream_vel=1.5, sampling_periods=2.0):
 
         self.iteration_ID = iteration_ID
@@ -384,9 +384,9 @@ class Iteration():
         self.top_cyl_RPS_PI = []
         self.bot_cyl_RPS_PI = []
 
-        self.top_sens_values = []
-        self.mid_sens_values = []
-        self.bot_sens_values = []
+        self.top_sens_values = [1.5398,]
+        self.mid_sens_values = [1.1128,]
+        self.bot_sens_values = [1.5591,]
 
         self.action_counter = 0
         self.time_step_start = 1
@@ -402,9 +402,9 @@ class Iteration():
         self.CFD_timesteps_ramp = int(np.ceil(self.CFD_timesteps_period * self.dur_ramps))
 
     def reset_state(self):
-        top_sens_state = 1.2
-        mid_sens_state = 1.2
-        bot_sens_state = 1.2
+        top_sens_state = 0.3105
+        mid_sens_state = 0.15975
+        bot_sens_state = 0.29325
         front_mot_state = 0.0
         top_mot_state = 0.0
         bot_mot_state = 0.0
@@ -428,6 +428,11 @@ class Iteration():
         J_fluc = J_fluc / (self.free_stream_vel ** 2)
 
         J_act = 0
+        
+        if len(self.front_cyl_RPS_PI) >= (self.CFD_timesteps_period*self.sampling_periods):
+            sampling_timesteps=int(self.CFD_timesteps_period*self.sampling_periods)
+        else:
+            sampling_timesteps=int(len(self.front_cyl_RPS_PI))
 
         for i in range(sampling_timesteps):
             J_act += self.front_cyl_RPS_PI[-(i + 1)] ** 2
@@ -445,7 +450,7 @@ class Iteration():
         else:
             action_factor = 1.0
         
-        reward_scaling = 1.0
+        reward_scaling = 17.5
         
         reward = reward * action_factor * reward_scaling
 
@@ -463,7 +468,7 @@ class Iteration():
         mid_sens_state = np.var(self.mid_sens_values[-sampling_timesteps:])
         bot_sens_state = np.var(self.bot_sens_values[-sampling_timesteps:])
         
-        sens_state_scaling = 1.0
+        sens_state_scaling = 7.5
 
         top_sens_state = top_sens_state / (self.free_stream_vel**2) * sens_state_scaling
         mid_sens_state = mid_sens_state / (self.free_stream_vel**2) * sens_state_scaling
@@ -531,7 +536,7 @@ class Iteration():
         if bot_cyl_RPS_ramp < -670:
             bot_cyl_RPS_ramp= -670
 
-        sampling_timesteps = self.CFD_timesteps_action - self.CFD_timesteps_ramp
+        sampling_timesteps = int(self.CFD_timesteps_action - self.CFD_timesteps_ramp)
         if len(self.front_cyl_RPS_PI) < (sampling_timesteps):
             front_cyl_RPS_old = 0
             top_cyl_RPS_old = 0
@@ -628,6 +633,33 @@ class Iteration():
 
 
         return mot_data
+    
+    def calculate_vel_data(self, vel_data,timesteps_spacing):
+        des_times=np.zeros(self.CFD_timesteps_action)
+        for i in range(self.CFD_timesteps_action):
+            des_times[i]=i*self.CFD_timestep
+        
+        times=np.zeros((self.CFD_timesteps_action//timesteps_spacing)+1)
+        vel_data_top=np.zeros(len(times))
+        vel_data_mid=np.zeros(len(times))
+        vel_data_bot=np.zeros(len(times))
+        for i in range(len(times)):
+            if i==0:
+                times[i]=-1*self.CFD_timestep
+                vel_data_top[i]=self.top_sens_values[-1]
+                vel_data_mid[i]=self.mid_sens_values[-1]
+                vel_data_bot[i]=self.bot_sens_values[-1]
+            else:
+                times[i]=i*timesteps_spacing*self.CFD_timestep
+                vel_data_top[i]=vel_data['top'][(i-1)]
+                vel_data_mid[i]=vel_data['mid'][(i-1)]
+                vel_data_bot[i]=vel_data['bot'][(i-1)]
+        
+        vel_data_top=Spline(times,vel_data_top,des_times)
+        vel_data_mid=Spline(times,vel_data_mid,des_times)
+        vel_data_bot=Spline(times,vel_data_bot,des_times)
+        
+        return vel_data_top, vel_data_mid, vel_data_bot
 
     def run_iteration(self):
         state = self.reset_state()
@@ -654,10 +686,12 @@ class Iteration():
             time_step_end = self.time_step_start + self.CFD_timesteps_action
 
             vel_data = CFD_Run(self.iteration_ID, self.action_counter, self.time_step_start, time_step_end, mot_data)
+            
+            vel_data_top,vel_data_mid,vel_data_bot=self.calculate_vel_data(vel_data,5)
 
-            self.top_sens_values.extend(vel_data['top'])
-            self.mid_sens_values.extend(vel_data['mid'])
-            self.bot_sens_values.extend(vel_data['bot'])
+            self.top_sens_values.extend(vel_data_top)
+            self.mid_sens_values.extend(vel_data_mid)
+            self.bot_sens_values.extend(vel_data_bot)
 
             reward = self.calculate_reward()
             state = self.calculate_state()
@@ -695,7 +729,7 @@ entropy_coef = 0.001
 epsilon = 0.2
 value_range = 0.5
 num_epochs = 10
-batch_size = 40
+batch_size = 50
 actor_lr = 1e-4
 critic_lr = 1e-4
 
@@ -704,7 +738,7 @@ ppo_agent = PPO_Agent(obs_dim=obs_dim, act_dim=act_dim, gamma=gamma, lamda=lamda
                       actor_lr=actor_lr, critic_lr=critic_lr)
 
 shedding_freq = 8.42
-dur_actions = 0.20
+dur_actions = 0.2105
 CFD_timestep = 5e-4
 mot_timestep = 5e-4
 dur_ramps = 0.04
