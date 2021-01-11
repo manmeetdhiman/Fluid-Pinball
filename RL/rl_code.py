@@ -56,9 +56,9 @@ class Critic(nn.Module):
 
 
 class PPO_Agent(object):
-    def __init__(self, obs_dim=3, act_dim=3, gamma=0.99, lamda=0.9,
-                 entropy_coef=0.01, epsilon=0.2, value_range=0.2,
-                 num_epochs=10, batch_size=30, actor_lr=0.001, critic_lr=0.001):
+    def __init__(self, obs_dim=7, act_dim=3, gamma=0.99, lamda=0.1,
+                 entropy_coef=0.001, epsilon=0.2, value_range=0.5,
+                 num_epochs=10, batch_size=50, actor_lr=0.001, critic_lr=0.001):
 
         self.gamma = gamma
         self.lamda = lamda
@@ -312,7 +312,6 @@ def Spline(times,rotations,des_times,k=3):
     des_rotations=interpolate.splev(des_times,spline)
     return des_rotations
 
-
 def CFD_Run(iteration_ID, action_num, time_step_start, time_step_end, mot_data):
     front_cyl = mot_data['revolutions'][0]
     top_cyl = mot_data['revolutions'][1]
@@ -322,9 +321,9 @@ def CFD_Run(iteration_ID, action_num, time_step_start, time_step_end, mot_data):
     top_cyl_avg = np.mean(top_cyl)
     bot_cyl_avg = np.mean(bot_cyl)
 
-    top_sens = np.zeros(len(front_cyl))
-    mid_sens = np.zeros(len(front_cyl))
-    bot_sens = np.zeros(len(front_cyl))
+    top_sens = np.zeros(len(front_cyl)//5)
+    mid_sens = np.zeros(len(front_cyl)//5)
+    bot_sens = np.zeros(len(front_cyl)//5)
 
     if top_cyl_avg * bot_cyl_avg < 0:
         front_cyl_coeff = front_cyl_avg / 500
@@ -342,8 +341,8 @@ def CFD_Run(iteration_ID, action_num, time_step_start, time_step_end, mot_data):
     front_cyl_coeff = front_cyl_avg / 500
     top_cyl_coeff = 1 / (top_cyl_avg / 100)
     bot_cyl_coeff = 1 / (bot_cyl_avg / 100)
-    for i in range(len(front_cyl)):
-        time = 2 * 3.14 / len(front_cyl) * i
+    for i in range(len(top_sens)):
+        time = 2 * 3.14 / len(front_cyl) * (i+1)*5
         top_sens[i] = front_cyl_coeff * np.sin(time)
         mid_sens[i] = top_cyl_coeff * np.sin(time)
         bot_sens[i] = bot_cyl_coeff * np.sin(time)
@@ -351,9 +350,8 @@ def CFD_Run(iteration_ID, action_num, time_step_start, time_step_end, mot_data):
     vel_data = {'top': top_sens, 'mid': mid_sens, 'bot': bot_sens}
     return vel_data
 
-
 class Iteration():
-    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=30, dur_actions=0.2105,
+    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=25, dur_actions=0.2105,
                  CFD_timestep=5e-4, mot_timestep=5e-4, dur_ramps=0.04, free_stream_vel=1.5, sampling_periods=2.0):
 
         self.iteration_ID = iteration_ID
@@ -639,7 +637,7 @@ class Iteration():
         for i in range(self.CFD_timesteps_action):
             des_times[i]=i*self.CFD_timestep
         
-        times=np.zeros((self.CFD_timesteps_action//timesteps_spacing)+1)
+        times=np.zeros(len(vel_data['top'])+1)
         vel_data_top=np.zeros(len(times))
         vel_data_mid=np.zeros(len(times))
         vel_data_bot=np.zeros(len(times))
