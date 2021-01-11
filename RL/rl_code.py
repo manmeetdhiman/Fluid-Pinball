@@ -416,9 +416,9 @@ class Iteration():
 
     def calculate_reward(self):
         if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods):
-            sampling_timesteps = self.CFD_timesteps_period * self.sampling_periods
+            sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods)
         else:
-            sampling_timesteps = len(self.top_sens_values)
+            sampling_timesteps = int(len(self.top_sens_values))
 
         top_sens_var = np.var(self.top_sens_values[-sampling_timesteps:])
         mid_sens_var = np.var(self.mid_sens_values[-sampling_timesteps:])
@@ -437,7 +437,7 @@ class Iteration():
         J_act = np.sqrt(J_act / (3 * sampling_timesteps))
         J_act = J_act / self.free_stream_vel * 0.01
         
-        gamma = 0.02
+        gamma = 0.0065
         reward = -1*(J_fluc + gamma * J_act)
 
         if self.action_counter <= 20:
@@ -455,9 +455,9 @@ class Iteration():
 
     def calculate_state(self):
         if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods):
-            sampling_timesteps = self.CFD_timesteps_period * self.sampling_periods
+            sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods)
         else:
-            sampling_timesteps = len(self.top_sens_values)
+            sampling_timesteps = int(len(self.top_sens_values))
 
         top_sens_state = np.var(self.top_sens_values[-sampling_timesteps:])
         mid_sens_state = np.var(self.mid_sens_values[-sampling_timesteps:])
@@ -470,9 +470,9 @@ class Iteration():
         bot_sens_state = bot_sens_state / (self.free_stream_vel**2) * sens_state_scaling
         
         if len(self.front_cyl_RPS_PI) >= (self.CFD_timesteps_action-self.CFD_timesteps_ramp):
-            sampling_timesteps=self.CFD_timesteps_action-self.CFD_timesteps_ramp
+            sampling_timesteps= int(self.CFD_timesteps_action-self.CFD_timesteps_ramp)
         else:
-            sampling_timesteps=len(self.front_cyl_RPS_PI)
+            sampling_timesteps= int(len(self.front_cyl_RPS_PI))
 
         front_mot_state = np.mean(self.front_cyl_RPS_PI[-sampling_timesteps:])
         top_mot_state = np.mean(self.top_cyl_RPS_PI[-sampling_timesteps:])
@@ -624,7 +624,7 @@ class Iteration():
         self.bot_cyl_RPS_PI.extend(bot_cyl_RPS_temp_CFD)
 
         mot_data = {'revolutions': [front_cyl_RPS_temp_CFD, top_cyl_RPS_temp_CFD, bot_cyl_RPS_temp_CFD]
-            , 'freq':[], 'amp':[], 'offset':[], 'phase':[]}
+            , 'freq':[0,0,0], 'amp':[0,0,0], 'offset':[0,0,0], 'phase':[0,0,0]}
 
 
         return mot_data
