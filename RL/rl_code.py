@@ -717,43 +717,43 @@ free_stream_vel = 1.5
 sampling_periods = 2
 
 if load_weights:
-    policy_num = 1
-    filename_actor = 'Actor_Policy_Number_' + str(policy_num)
-    filename_critic = 'Critic_Policy_Number_' + str(policy_num)
+    policy_num_load_weights = 1
+    filename_actor = 'Actor_Policy_Number_' + str(policy_num_load_weights)
+    filename_critic = 'Critic_Policy_Number_' + str(policy_num_load_weights)
     ppo_agent._load_weights(filename_actor, filename_critic)
 
 # Main loop that goes through the policies, episodes, iterations
 
-for i in range(num_policies):
+for policy in range(num_policies):
     Iterations = []
-    for j in range(num_iterations):
-        iteration_ID = num_iterations * (i) + j + 1
+    for iteration in range(num_iterations):
+        iteration_ID = num_iterations * policy + iteration + 1
         Iterations.append(Iteration(iteration_ID=iteration_ID, shedding_freq=shedding_freq, num_actions=num_actions,
                                     dur_actions=dur_actions, CFD_timestep=CFD_timestep, mot_timestep=mot_timestep,
                                     dur_ramps=dur_ramps, free_stream_vel=free_stream_vel,
                                     sampling_periods=sampling_periods))
-    for j in range(num_iterations):
-        Iterations[j].run_iteration()
-    for j in range(num_iterations):
-        Iterations[j].save_iteration()
-    for j in range(num_iterations):
-        ppo_agent.states.extend(Iterations[j].states)
-        ppo_agent.actions.extend(Iterations[j].actions)
-        ppo_agent.rewards.extend(Iterations[j].rewards)
-        ppo_agent.is_terminals.extend(Iterations[j].is_terminals)
-        ppo_agent.log_probs.extend(Iterations[j].log_probs)
-        ppo_agent.values.extend(Iterations[j].values)
-        ppo_agent.next_states.extend(Iterations[j].next_states)
-        total_reward = np.sum(Iterations[j].rewards)
+    for iteration in range(num_iterations):
+        Iterations[iteration].run_iteration()
+    for iteration in range(num_iterations):
+        Iterations[iteration].save_iteration()
+    for iteration in range(num_iterations):
+        ppo_agent.states.extend(Iterations[iteration].states)
+        ppo_agent.actions.extend(Iterations[iteration].actions)
+        ppo_agent.rewards.extend(Iterations[iteration].rewards)
+        ppo_agent.is_terminals.extend(Iterations[iteration].is_terminals)
+        ppo_agent.log_probs.extend(Iterations[iteration].log_probs)
+        ppo_agent.values.extend(Iterations[iteration].values)
+        ppo_agent.next_states.extend(Iterations[iteration].next_states)
+        total_reward = np.sum(Iterations[iteration].rewards)
         total_rewards.append(total_reward)
-        print('Iteration Number: ', Iterations[j].iteration_ID, ' Iteration Reward: ', total_reward)
+        print('Iteration Number: ', Iterations[iteration].iteration_ID, ' Iteration Reward: ', total_reward)
 
     next_state = ppo_agent.next_states[-1]
     value = ppo_agent.critic.forward(torch.FloatTensor(next_state))
     value = value.detach().numpy()
     ppo_agent.values.append(value)
     ppo_agent._update_weights()
-    ppo_agent._save_weights((i + 1))
+    ppo_agent._save_weights((policy + 1))
     print('Weights Updated')
     total_rewards_dictionary = {'total_rewards': total_rewards}
     total_rewards_filename = 'total_rewards.pickle'
