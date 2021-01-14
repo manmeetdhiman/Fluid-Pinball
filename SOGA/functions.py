@@ -69,7 +69,7 @@ def genesis(size):
     return population
 
 #Fluid Pinball GA
-def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, search_limit, dt, tsteps,n_genes):
+def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, search_limit, dt, tsteps,n_genes,abs_counter):
     fittest = []
     cost_fittest_s = []
     gen_s = []
@@ -79,6 +79,7 @@ def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, sea
         print(f'Starting from generation {starting_gen}')
         if starting_gen == 0:
             population = genesis(size = size)
+            population,abs_counter = tag(group = population,abs_counter = abs_counter)
             population = response(population = population, dt = dt, tsteps = tsteps)
             population = cost_calc(gen = starting_gen, population = population)
         else:
@@ -86,7 +87,7 @@ def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, sea
 
         for gen in range(starting_gen+1,max_gen+1):
             gen_s.append(gen)
-            parents = fitness(population=population)
+            parents = fitness(population = population)
             fittest.append(parents[0])
             cost_fittest = parents[0].j_fluc
             cost_fittest_s.append(parents[0].j_fluc)
@@ -97,6 +98,7 @@ def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, sea
                 random.shuffle(parents)
 
             children = mate(parents=parents, mut_prob=mut_prob, mut_type=mut_type, g=gen, G=max_gen, limit=search_limit,n_genes = n_genes)
+            children,abs_counter = tag(group = children, abs_counter = abs_counter)
             if children == None:
                 break
             children = response(population=children, dt=dt, tsteps=tsteps)
@@ -113,6 +115,7 @@ def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, sea
 
     if ga_type == 'Rastrigin':
         population = genesis(size=size)
+        population, abs_counter = tag(group=population, abs_counter=abs_counter)
         population = rastrigin(population = population)
 
         for gen in range(starting_gen+1,max_gen+1):
@@ -127,6 +130,7 @@ def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, sea
                 random.shuffle(parents)
 
             children = mate_ras(parents = parents, mut_prob = mut_prob, mut_type = mut_type, g = gen, G = max_gen, limit = search_limit,n_genes = n_genes)
+            children, abs_counter = tag(group=children, abs_counter=abs_counter)
             if children == None:
                 break
 
@@ -265,6 +269,26 @@ def cross_mut(mate_pool,mut_prob,mut_type,g,G,limit,n_genes):
                             mut_gene = child.genes[key][motor] + tau * (u_bound[key] - 0) * (1 - r ** (g / G))
                         mut_gene = sat_lim(gene=mut_gene, key=key)
                         child.genes[key][motor] = mut_gene
+
+        if mut_type == 'rand_genes':
+            shuffled_motors = list(range(3))
+            shuffled_keys = gene_keys.copy()
+            for _ in range(3):
+                random.shuffle(shuffled_motors)
+                random.shuffle(shuffled_keys)
+
+            mut_counter = 0
+            rand_genes = random.choice(list(range(1,12)))
+            while mut_counter <= rand_genes:
+                for motor in shuffled_motors:
+                    for key in shuffled_keys:
+                        mut_counter += 1
+                        mut_gene = child.genes[key][motor] + tau*(u_bound[key] - l_bound[key])*(1-r**(g/G))
+                        if key == 'frequency':
+                            mut_gene = child.genes[key][motor] + tau * (u_bound[key] - 0) * (1 - r ** (g / G))
+                        mut_gene = sat_lim(gene=mut_gene, key=key)
+                        child.genes[key][motor] = mut_gene
+
     return child
 
 #response
@@ -410,11 +434,41 @@ def load_population_from_file(gen):
     return reload_population
 
 
+def tag(group,abs_counter):
+    for individual in group:
+        print(abs_counter)
+        individual.id = abs_counter
+        abs_counter += 1
+    return group,abs_counter
 
+def parse_j_fluc(raw_data,type):
+    parsed_data = []
+    return_data = []
+    for gen in raw_data.keys():
+        for ind in raw_data[gen].keys():
+            parsed_data.append(raw_data[gen][ind]['j_fluc'])
+        if type == 'best':
+            return_data.append(min(parsed_data))
+        if type == 'avg':
+            return_data.append(stats.mean(parsed_data))
+        if type == 'worst':
+            return_data.append(max(parsed_data))
+        if type == 'all':
+            return_data.append(parsed_data)
+    return return_data
 
+def plotter(type,x,y,title,xlabel,ylabel,label,legend):
+    if type == 'scatter':
+        plt.plot(x,y,label = label)
+    if type == 'line':
+        plt.scatter(x,y,label = label)
 
-
-
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    if legend == True:
+        plt.legend([label])
+    plt.show()
 
 
 
