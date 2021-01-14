@@ -4,6 +4,7 @@
 class individual:
     def __init__(self):
         #defining genes
+        self.id = 0
         self.genes = {
             'amplitude': [],
             'frequency': [],
