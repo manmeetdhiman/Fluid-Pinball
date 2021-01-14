@@ -436,7 +436,6 @@ def load_population_from_file(gen):
 
 def tag(group,abs_counter):
     for individual in group:
-        print(abs_counter)
         individual.id = abs_counter
         abs_counter += 1
     return group,abs_counter
