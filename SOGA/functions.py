@@ -69,10 +69,13 @@ def genesis(size):
     return population
 
 #Fluid Pinball GA
-def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, search_limit, dt, tsteps,n_genes,abs_counter):
+def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, search_limit, dt, tsteps,n_genes,abs_counter,gen_buffer_limit):
     fittest = []
     cost_fittest_s = []
     gen_s = []
+    sat_counter = 0
+    buffer_count = 0
+    population_data = {}
 
 
     if ga_type == 'Pinball':
@@ -86,14 +89,30 @@ def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, sea
             population = load_population_from_file(starting_gen)
 
         for gen in range(starting_gen+1,max_gen+1):
+            population_data[gen] = population
             gen_s.append(gen)
             parents = fitness(population = population)
             fittest.append(parents[0])
             cost_fittest = parents[0].j_fluc
-            cost_fittest_s.append(parents[0].j_fluc)
-            if cost_fittest <= target_cost:
-                print(f'Fittest cost {cost_fittest} less than equal target cost {target_cost}.')
-                break
+            cost_fittest_s.append(cost_fittest)
+
+            buffer_count += 1
+            if buffer_count >= gen_buffer_limit:
+                message = exit_check(cost_fittest_s = cost_fittest_s,target_cost = target_cost,sat_counter = sat_counter)
+                if message == 'first  saturation':
+                    mut_prob = 0.3
+                    mut_type = 'motor'
+                    sat_counter += 1
+                    buffer_count = 0
+                if message == 'second saturation':
+                    mut_prob = 1
+                    mut_type = 'gene'
+                    sat_counter += 1
+                    buffer_count = 0
+                if message == 'exit':
+                    print(f'Fittest cost {cost_fittest} less than equal target cost {target_cost}.')
+                    break
+
             for item in range(3):
                 random.shuffle(parents)
 
@@ -119,13 +138,30 @@ def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, sea
         population = rastrigin(population = population)
 
         for gen in range(starting_gen+1,max_gen+1):
+            population_data[gen] = population
             gen_s.append(gen)
             parents = fitness_ras(population = population)
             fittest.append(parents[0])
             cost_fittest = parents[0].ras
             cost_fittest_s.append(cost_fittest)
-            if cost_fittest <= target_cost:
-                break
+
+            buffer_count += 1
+            if buffer_count >= gen_buffer_limit:
+                message = exit_check(cost_fittest_s=cost_fittest_s, target_cost=target_cost, sat_counter=sat_counter)
+                if message == 'first_saturation':
+                    mut_prob = 0.3
+                    mut_type = 'motor'
+                    sat_counter += 1
+                    buffer_count = 0
+                if message == 'second_saturation':
+                    mut_prob = 1
+                    mut_type = 'gene'
+                    sat_counter += 1
+                    buffer_count = 0
+                if message == 'exit':
+                    print(f'Fittest cost {cost_fittest} less than equal target cost {target_cost}.')
+                    break
+
             for item in range(3):
                 random.shuffle(parents)
 
@@ -143,7 +179,7 @@ def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, sea
         percent_improvement = abs((minimization/fittest[0].ras)*100)
         bov = fittest[-1].ras
 
-    return gen_s,fittest,cost_fittest_s, minimization, percent_improvement, bov
+    return gen_s,fittest,cost_fittest_s, minimization, percent_improvement, bov, population_data
 
 #Gene population
 def genes(population):
@@ -360,7 +396,7 @@ def selection_ras(parents):
             mate_pool.append(shuffled[i])
     return mate_pool
 
-def stats(target_cost,max_gen,size,mut_prob,gen,minimization,percent_improvement, bov, fittest, gen_s, cost_fittest_s):
+def stats(target_cost,max_gen,size,mut_prob,gen,minimization,percent_improvement, bov, fittest, gen_s, cost_fittest_s,population_data):
     # final stats:
     print(f'Defined Parameters:')
     print(f'    Target Objective Value: {target_cost}')
@@ -380,7 +416,7 @@ def stats(target_cost,max_gen,size,mut_prob,gen,minimization,percent_improvement
     pprint(fittest[-1].genes)
 
     # plotting
-    fig.Figure()
+    plt.figure(1)
     plt.scatter(gen_s, cost_fittest_s)
     plt.title('Best Rastrigin Evaluation From Each Generation')
     plt.xlabel('Generation')
@@ -388,8 +424,14 @@ def stats(target_cost,max_gen,size,mut_prob,gen,minimization,percent_improvement
     plt.xlim([0, max(gen_s) + 1])
     plt.ylim([0, max(cost_fittest_s) + 10])
     plt.text(0.5, 10, f"{percent_improvement} %")
-    plt.show()
 
+    plt.figure(2)
+    for gen in range(1, max(population_data.keys())):
+        cost = []
+        for ind in range(size):
+            cost.append(population_data[gen][ind].ras)
+        plt.scatter([gen] * size , cost, color='green')
+    plt.show()
 #saturation limiter for genes
 def sat_lim(gene,key):
     if gene > u_bound[key]:
@@ -441,9 +483,9 @@ def tag(group,abs_counter):
     return group,abs_counter
 
 def parse_j_fluc(raw_data,type):
-    parsed_data = []
     return_data = []
     for gen in raw_data.keys():
+        parsed_data = []
         for ind in raw_data[gen].keys():
             parsed_data.append(raw_data[gen][ind]['j_fluc'])
         if type == 'best':
@@ -456,11 +498,14 @@ def parse_j_fluc(raw_data,type):
             return_data.append(parsed_data)
     return return_data
 
-def plotter(type,x,y,title,xlabel,ylabel,label,legend):
+def plotter(type,x,y,title,xlabel,ylabel,label,legend,total_gen):
     if type == 'scatter':
         plt.plot(x,y,label = label)
     if type == 'line':
         plt.scatter(x,y,label = label)
+    if type == 'spread':
+        for gen in range(0, total_gen):
+            plt.scatter([gen + 1]*len(y[gen]), y[gen],color = 'green',label = label)
 
     plt.title(title)
     plt.xlabel(xlabel)
@@ -468,6 +513,20 @@ def plotter(type,x,y,title,xlabel,ylabel,label,legend):
     if legend == True:
         plt.legend([label])
     plt.show()
+
+def exit_check(cost_fittest_s,target_cost,sat_counter):
+    if cost_fittest_s[-1] == cost_fittest_s[-2] and cost_fittest_s[-1] == cost_fittest_s[-3]:
+        if sat_counter == 0:
+            return 'first_saturation'
+        if sat_counter == 1:
+            return 'second_saturation'
+        if sat_counter == 2:
+            return 'exit'
+    if cost_fittest_s[-1] == target_cost:
+        return 'exit'
+    return 'no action'
+
+
 
 
 
