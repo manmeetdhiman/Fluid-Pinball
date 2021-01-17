@@ -12,7 +12,9 @@ class individual:
             'offset': []
         }
         #defining fluctuation cost
+        self.j_total = 0
         self.j_fluc = 0
+        self.j_act = 0
         self.ras = 0
         #defining motor revolutions
         self.revolutions = [[], [], []]
