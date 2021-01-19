@@ -8,10 +8,10 @@ import random
 from matplotlib import pyplot as plt
 import yaml
 from pprint import pprint
+from individual import sim_type
 
 #import CFD.cfd
-
-GA_type = 'Rastrigin' #choose Rastrigin or Pinball
+GA_type = sim_type
 offset = 0.0000000000000001 #for random.uniform()
 
 ##motor parameters
@@ -69,7 +69,8 @@ def genesis(size):
     return population
 
 #Fluid Pinball GA
-def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, search_limit, dt, tsteps,n_genes,abs_counter,gen_buffer_limit):
+def GA(starting_gen, target_cost, max_gen, size, mut_prob, mut_type, search_limit, dt, tsteps,n_genes,abs_counter,gen_buffer_limit):
+
     fittest = []
     cost_fittest_s = []
     gen_s = []
@@ -78,7 +79,8 @@ def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, sea
     population_data = {}
 
 
-    if ga_type == 'Pinball':
+
+    if GA_type == 'Pinball':
         print(f'Starting from generation {starting_gen}')
         if starting_gen == 0:
             population = genesis(size = size)
@@ -132,7 +134,7 @@ def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, sea
         percent_improvement = (minimization / fittest[0].j_total) * 100
         bov = fittest[-1].j_total
 
-    if ga_type == 'Rastrigin':
+    if GA_type == 'Rastrigin':
         population = genesis(size=size)
         population, abs_counter = tag(group=population, abs_counter=abs_counter)
         population = rastrigin(population = population)
