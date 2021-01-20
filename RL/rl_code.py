@@ -744,19 +744,19 @@ num_actions = 25
 num_policies = 30
 num_iterations = 5
 total_rewards = []
-load_weights = False
 free_stream_vel = 1.5
 sampling_periods = 2
+load_weights = False
+policy_num_load_weights = 0
 
 if load_weights:
-    policy_num_load_weights = 1
     filename_actor = 'Actor_Policy_Number_' + str(policy_num_load_weights)
     filename_critic = 'Critic_Policy_Number_' + str(policy_num_load_weights)
     ppo_agent._load_weights(filename_actor, filename_critic)
 
 # Main loop that goes through the policies, episodes, iterations
 
-for policy in range(num_policies):
+for policy in range(policy_num_load_weights,num_policies):
     Iterations = []
     for iteration in range(num_iterations):
         iteration_ID = num_iterations * policy + iteration + 1
