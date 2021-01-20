@@ -6,12 +6,12 @@ import math
 from PI_motor_GA import PI_motor
 import random
 from matplotlib import pyplot as plt
-from matplotlib import figure as fig
 import yaml
 from pprint import pprint
-#import CFD.cfd
+from individual import sim_type
 
-GA_type = 'Rastrigin' #choose Rastrigin or Pinball
+#import CFD.cfd
+GA_type = sim_type
 offset = 0.0000000000000001 #for random.uniform()
 
 ##motor parameters
@@ -69,7 +69,8 @@ def genesis(size):
     return population
 
 #Fluid Pinball GA
-def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, search_limit, dt, tsteps,n_genes,abs_counter,gen_buffer_limit):
+def GA(starting_gen, target_cost, max_gen, size, mut_prob, mut_type, search_limit, dt, tsteps,n_genes,abs_counter,gen_buffer_limit):
+
     fittest = []
     cost_fittest_s = []
     gen_s = []
@@ -78,7 +79,8 @@ def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, sea
     population_data = {}
 
 
-    if ga_type == 'Pinball':
+
+    if GA_type == 'Pinball':
         print(f'Starting from generation {starting_gen}')
         if starting_gen == 0:
             population = genesis(size = size)
@@ -93,7 +95,7 @@ def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, sea
             gen_s.append(gen)
             parents = fitness(population = population)
             fittest.append(parents[0])
-            cost_fittest = parents[0].j_fluc
+            cost_fittest = parents[0].j_total
             cost_fittest_s.append(cost_fittest)
 
             buffer_count += 1
@@ -128,11 +130,11 @@ def GA(starting_gen,ga_type, target_cost, max_gen, size, mut_prob, mut_type, sea
             output_population_to_file(population = population, gen = gen)
 
         # return parameters
-        minimization = fittest[0].j_fluc - fittest[-1].j_fluc
-        percent_improvement = (minimization / fittest[0].j_fluc) * 100
-        bov = fittest[-1].j_fluc
+        minimization = fittest[0].j_total - fittest[-1].j_total
+        percent_improvement = (minimization / fittest[0].j_total) * 100
+        bov = fittest[-1].j_total
 
-    if ga_type == 'Rastrigin':
+    if GA_type == 'Rastrigin':
         population = genesis(size=size)
         population, abs_counter = tag(group=population, abs_counter=abs_counter)
         population = rastrigin(population = population)
@@ -198,12 +200,15 @@ def genes(population):
 def cost_calc(gen, population):
     cost = CFD.cfd.run_CFD(gen, population, submit_slurm=True, GA_to_CFD=True, compute_motor_rotation=False)
     for i in range(len(population)):
-        population[i].j_fluc = cost[i]['Jtotal']
+        individual_id = population[i].id
+        population[i].j_act = cost[individual_id]['Jact']
+        population[i].j_fluc = cost[individual_id]['Jfluc']
+        population[i].j_total = cost[individual_id]['Jtotal']
     return population
 
 #Fitness
 def fitness(population):
-    population.sort(key=lambda individual: individual.j_fluc,reverse = False)
+    population.sort(key=lambda individual: individual.j_total,reverse = False)
     parents = population[slice(int(len(population)/2))]
     return parents
 
@@ -226,9 +231,9 @@ def selection(parents):
         shuffled[i-1] = parents[i]
 
     for i in range(len(parents)):
-        if parents[i].j_fluc < shuffled[i].j_fluc:
+        if parents[i].j_total < shuffled[i].j_total:
             mate_pool.append(parents[i])
-        elif parents[i].j_fluc == shuffled[i].j_fluc:
+        elif parents[i].j_total == shuffled[i].j_total:
             choices  = [parents[i],shuffled[i]]
             mate_pool.append(random.choice(choices))
         else:
@@ -450,12 +455,14 @@ def output_population_to_file(population, gen):
     print(f'Outputting population {gen} to file')
 
     output = {}
-    for n, ind in enumerate(population):
-        output[n] = {}
-        output[n]['genes'] = ind.genes
-        output[n]['j_fluc'] = ind.j_fluc
-        temp_rev_list = [sublist.tolist() for sublist in ind.revolutions]
-        output[n]['revolutions'] = temp_rev_list
+    for individual in population:
+        output[individual.id] = {}
+        output[individual.id]['genes'] = individual.genes
+        output[individual.id]['j_fluc'] = individual.j_fluc
+        output[individual.id]['j_act'] = individual.j_act
+        output[individual.id]['j_total'] = individual.j_total
+        temp_rev_list = [sublist.tolist() for sublist in individual.revolutions]
+        output[individual.id]['revolutions'] = temp_rev_list
 
     with open(f'population-gen-{gen}.yaml', 'w') as f:
          yaml.dump(output, f)
@@ -465,11 +472,14 @@ def load_population_from_file(gen):
     with open(f'population-gen-{gen}.yaml', 'r') as f:
         reload = yaml.safe_load(f)
     reload_population = []
-    for n in reload:
+    for individual_id in reload:
         ind = individual()
-        ind.genes = reload[n]['genes']
-        ind.j_fluc = reload[n]['j_fluc']
-        ind.revolutions = reload[n]['revolutions']
+        ind.id = individual_id
+        ind.genes = reload[individual_id]['genes']
+        ind.j_fluc = reload[individual_id]['j_fluc']
+        ind.j_act = reload[individual_id]['j_act']
+        ind.j_total = reload[individual_id]['j_total']
+        ind.revolutions = reload[individual_id]['revolutions']
 
         reload_population.append(ind)
 
@@ -482,12 +492,12 @@ def tag(group,abs_counter):
         abs_counter += 1
     return group,abs_counter
 
-def parse_j_fluc(raw_data,type):
+def parse_j(raw_data,type,key):
     return_data = []
     for gen in raw_data.keys():
         parsed_data = []
         for ind in raw_data[gen].keys():
-            parsed_data.append(raw_data[gen][ind]['j_fluc'])
+            parsed_data.append(raw_data[gen][ind][key])
         if type == 'best':
             return_data.append(min(parsed_data))
         if type == 'avg':
@@ -510,6 +520,7 @@ def plotter(type,x,y,title,xlabel,ylabel,label,legend,total_gen):
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
+    plt.xticks(np.arange(1,total_gen+1,step = 1))
     if legend == True:
         plt.legend([label])
     plt.show()
