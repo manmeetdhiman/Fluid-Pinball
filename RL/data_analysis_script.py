@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import json
 
 num_iterations=5
-num_policies=7
+num_policies=11
 CFD_timestep=5e-4
 num_actions=25
 dur_actions=0.2105
@@ -23,7 +23,7 @@ master_data=[]
 for policy in range(num_policies):
     for iteration in range(num_iterations):
         iteration_ID=policy*num_iterations+iteration+1
-        filename='data_iteration_' + str(iteration_ID)+'.pickle'
+        filename='pickle_files/data_iteration_' + str(iteration_ID)+'.pickle'
         with open(filename, 'rb') as handle:
             data = pickle.load(handle)
         master_data.append(data)
@@ -344,7 +344,7 @@ for i in range(len(master_data)):
     json_dict['total_rewards'] = total_rewards[i]
 
     iteration = master_data[i]['iteration_ID']
-    filename = 'data_iteration_' + str(iteration)
+    filename = 'json_files/data_iteration_' + str(iteration)
     with open(filename, 'w') as outfile:
         json.dump(json_dict, outfile)
 
@@ -392,5 +392,7 @@ plot_episode_cyl_data(front_cyl_data,top_cyl_data,bot_cyl_data)
 plot_episode_sens_data(top_sens_data,mid_sens_data,bot_sens_data)
 plot_episode_sens_variance(top_sens_var,mid_sens_var,bot_sens_var)
 plot_episode_sens_mean(top_sens_mean,mid_sens_mean,bot_sens_mean)
+
+plt.show()
 
 # print(master_data[episode-1]['values'])
