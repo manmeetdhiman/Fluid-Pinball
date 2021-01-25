@@ -12,6 +12,9 @@ import pickle
 # Actor network class created below
 
 class Actor(nn.Module):
+
+    # Initializing the NN for the actor
+
     def __init__(self, in_dim: int, out_dim: int, ):
         self.in_dim = in_dim
         self.out_dim = out_dim
@@ -22,6 +25,8 @@ class Actor(nn.Module):
         self.hidden_two = nn.Linear(320, 320)
         self.mu_layer = nn.Linear(320, out_dim)
         self.log_std_layer = nn.Linear(320, out_dim)
+
+    # Defining the activation function for the actor NN
 
     def forward(self, state: torch.Tensor):
         x = F.tanh(self.hidden_one(state))
@@ -40,6 +45,8 @@ class Actor(nn.Module):
 # Critic network class created below
 
 class Critic(nn.Module):
+
+    # Initializing the NN for the critic
     def __init__(self, in_dim: int):
         super(Critic, self).__init__()
 
@@ -47,6 +54,7 @@ class Critic(nn.Module):
         self.hidden_two = nn.Linear(320, 320)
         self.out = nn.Linear(320, 1)
 
+    # Defining the activation function for the critic NN
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         x = F.relu(self.hidden_one(state))
         x = F.relu(self.hidden_two(x))
@@ -54,8 +62,11 @@ class Critic(nn.Module):
 
         return value
 
+# Class that defines the necessary properties required for the PPO agent
 
 class PPO_Agent(object):
+
+    # We basically pass and initialize all the parameters here
     def __init__(self, obs_dim=7, act_dim=3, gamma=0.99, lamda=0.1,
                  entropy_coef=0.001, epsilon=0.2, value_range=0.5,
                  num_epochs=10, batch_size=50, actor_lr=0.001, critic_lr=0.001):
@@ -89,6 +100,7 @@ class PPO_Agent(object):
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
+    # Reset the parameters after every episode
     def clear_memory(self):
 
         self.states = []
@@ -112,6 +124,7 @@ class PPO_Agent(object):
 
         return returns
 
+    # Based on the trajectory, actions and probability distribution is generated here
     def trajectories_data_generator(self, states: torch.Tensor, actions: torch.Tensor,
                                     returns: torch.Tensor, log_probs: torch.Tensor,
                                     values: torch.Tensor, advantages: torch.Tensor,
@@ -122,6 +135,7 @@ class PPO_Agent(object):
                 ids = np.random.choice(data_len, batch_size)
                 yield states[ids, :], actions[ids], returns[ids], log_probs[ids], values[ids], advantages[ids]
 
+    # Based on the state, we get the action from the probability distribution
     def _get_action(self, state):
 
         state = torch.FloatTensor(state).to(self.device)
@@ -130,6 +144,7 @@ class PPO_Agent(object):
 
         return action, value, dist, mu, std
 
+    # We update the weights of the actor and critic NNs based on the rewards, loss, and other parameters
     def _update_weights(self):
 
         self.rewards = torch.tensor(self.rewards).float()
@@ -167,7 +182,7 @@ class PPO_Agent(object):
             actor_loss = (-torch.mean(torch.min(loss, clipped_loss))
                           - entropy * self.entropy_coef)
 
-            # critic loss, uncoment for clipped value loss too.
+            # critic loss, uncomment for clipped value loss too.
             cur_value = self.critic(state)
             clipped_value = (
                     old_value + torch.clamp(cur_value - old_value,
@@ -191,6 +206,7 @@ class PPO_Agent(object):
 
         self.clear_memory()
 
+    # We save the weights into actor and critic files here for post-processing or other fxns
     def _save_weights(self, policy_num: int):
 
         filename_actor = "Actor_Policy_Number_" + str(policy_num)
@@ -198,6 +214,7 @@ class PPO_Agent(object):
         torch.save(self.actor.state_dict(), filename_actor)
         torch.save(self.critic.state_dict(), filename_critic)
 
+    # If necessary, we load the saved weights for a given actor, critic policy here
     def _load_weights(self, filename_actor, filename_critic):
 
         self.actor.load_state_dict(torch.load(filename_actor))
@@ -205,7 +222,7 @@ class PPO_Agent(object):
         self.critic.load_state_dict(torch.load(filename_critic))
         self.actor.eval()
 
-
+# This is Joel's function for the PI motor
 def PI_Motor(w_des_two, tsteps, dt, w0):
     w_des_one = np.zeros(50)
     for i in range(len(w_des_one)):
@@ -307,11 +324,13 @@ def PI_Motor(w_des_two, tsteps, dt, w0):
     w_final = w_s[len(w_des_one):]
     return w_final
 
+# This function is run for performing the cubic spline interpolations
 def Spline(times,rotations,des_times,k=3):
     spline = interpolate.splrep(times,rotations)
     des_rotations=interpolate.splev(des_times,spline)
     return des_rotations
 
+# This function is for getting the velocity data of the 3 cylinders
 def CFD_Run(iteration_ID, action_num, time_step_start, time_step_end, mot_data):
     front_cyl = mot_data['revolutions'][0]
     top_cyl = mot_data['revolutions'][1]
@@ -350,6 +369,7 @@ def CFD_Run(iteration_ID, action_num, time_step_start, time_step_end, mot_data):
     vel_data = {'top': top_sens, 'mid': mid_sens, 'bot': bot_sens}
     return vel_data
 
+# This class is set up for the Episodes/Iterations. The magic behind every episode occurs here
 class Iteration():
     def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=25, dur_actions=0.2105,
                  CFD_timestep=5e-4, mot_timestep=5e-4, dur_ramps=0.04, free_stream_vel=1.5, sampling_periods=2.0):
@@ -399,6 +419,7 @@ class Iteration():
         self.CFD_timesteps_action = int(np.ceil(self.CFD_timesteps_period * self.dur_actions))
         self.CFD_timesteps_ramp = int(np.ceil(self.CFD_timesteps_period * self.dur_ramps))
 
+    # The state is reset here during the start of episodes
     def reset_state(self):
         top_sens_state = 0.3105
         mid_sens_state = 0.15975
@@ -412,6 +433,7 @@ class Iteration():
                           top_mot_state, bot_mot_state, act_num_state])
         return state
 
+    # The reward is calculated here using the J_fluc and J_act
     def calculate_reward(self):
         if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods):
             sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods)
@@ -456,6 +478,7 @@ class Iteration():
 
         return reward
 
+    # The state of the PPO agent in the environment is calculated which is fed to get the action
     def calculate_state(self):
         if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods):
             sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods)
@@ -494,6 +517,8 @@ class Iteration():
                           bot_mot_state, action_num_state])
         return state
 
+    # This function is probably not necessary for us but it basically checks if the CFD timesteps and motor timesteps
+    # match. If not, it matches them
     def convert_timestep_array(self, times_A, array_A, timestep_A):
         if timestep_A == self.mot_timestep:
             timestep_B = self.CFD_timestep
@@ -516,6 +541,8 @@ class Iteration():
 
         return array_B
 
+    # This function calculates the ramp required based on the previous actions. Limits are in-built as well. It returns
+    # the required motor data
     def calculate_mot_data(self, action):
         front_cyl_RPS_ramp = action[0] * 325
         top_cyl_RPS_ramp = action[1] * 325
@@ -631,7 +658,8 @@ class Iteration():
 
 
         return mot_data
-    
+
+    # This function is used to calculate the velocity data using the cubic splines
     def calculate_vel_data(self, vel_data,timesteps_spacing):
         des_times=np.zeros(self.CFD_timesteps_action)
         for i in range(self.CFD_timesteps_action):
@@ -659,6 +687,7 @@ class Iteration():
         
         return vel_data_top, vel_data_mid, vel_data_bot
 
+    # This function runs the iterations/episodes basically
     def run_iteration(self):
         state = self.reset_state()
         for actions in range(num_actions):
@@ -704,6 +733,7 @@ class Iteration():
 
             self.time_step_start = time_step_end + 1
 
+    # This function saves the iteration data into pickle files
     def save_iteration(self):
         iteration_results = {'iteration_ID': self.iteration_ID, 'states': self.states, 'actions': self.actions,
                              'rewards': self.rewards, 'mus': self.mus, 'stds': self.stds, 'values': self.values,
@@ -718,7 +748,7 @@ class Iteration():
         with open(filename, 'wb') as handle:
             pickle.dump(iteration_results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-
+# We define the parameters for both actor and critic NNs
 obs_dim = 7
 act_dim = 3
 gamma = 0.99
@@ -731,10 +761,12 @@ batch_size = 50
 actor_lr = 1e-4
 critic_lr = 1e-4
 
+# We feed the NN parameters to the PPO agent class
 ppo_agent = PPO_Agent(obs_dim=obs_dim, act_dim=act_dim, gamma=gamma, lamda=lamda, entropy_coef=entropy_coef,
                       epsilon=epsilon, value_range=value_range, num_epochs=num_epochs, batch_size=batch_size,
                       actor_lr=actor_lr, critic_lr=critic_lr)
 
+# We define the required CFD and RL defining parameters for the PPO agent here
 shedding_freq = 8.42
 dur_actions = 0.2105
 CFD_timestep = 5e-4
@@ -749,12 +781,15 @@ sampling_periods = 2
 load_weights = False
 policy_num_load_weights = 0
 
+# This is used if we load the weights. Usually, this is not used though unless the simulation gets interrupted
+# or something
 if load_weights:
     filename_actor = 'Actor_Policy_Number_' + str(policy_num_load_weights)
     filename_critic = 'Critic_Policy_Number_' + str(policy_num_load_weights)
     ppo_agent._load_weights(filename_actor, filename_critic)
 
-# Main loop that goes through the policies, episodes, iterations
+# Main loop that goes through the policies and episodes/iterations. We also save the total rewards for every episode
+# here into a pickle file
 
 for policy in range(policy_num_load_weights,num_policies):
     Iterations = []
