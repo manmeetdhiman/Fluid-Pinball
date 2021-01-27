@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import json
 
 num_iterations=5
-num_policies=11
+num_policies=13
 CFD_timestep=5e-4
 num_actions=25
 dur_actions=0.2105
@@ -344,7 +344,7 @@ for i in range(len(master_data)):
     json_dict['total_rewards'] = total_rewards[i]
 
     iteration = master_data[i]['iteration_ID']
-    filename = 'json_files/data_iteration_' + str(iteration)
+    filename = 'json_files/data_iteration_' + str(iteration) + '.json'
     with open(filename, 'w') as outfile:
         json.dump(json_dict, outfile)
 
