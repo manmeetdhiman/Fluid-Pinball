@@ -9,7 +9,7 @@ max_gen = 30
 mut_prob = 0.1
 mut_type = 'all' #choose between 'all','motor','gene','n_genes'
 search_limit = 50000000
-gen_buffer_limit = 50 #number of generations GA is allowed to saturate
+gen_buffer_limit = 4 #number of generations GA is allowed to saturate
 if mut_type == 'n_genes':
     n_genes = 7
 else:
