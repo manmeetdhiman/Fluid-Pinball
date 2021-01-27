@@ -1,4 +1,4 @@
-sim_type = 'Pinball' #choose Rastrigin or Pinball
+sim_type = 'Rastrigin' #choose Rastrigin or Pinball
 #performance limits
 size = 18
 #GA Parameters
@@ -30,6 +30,11 @@ class individual:
             'frequency': [],
             'phase': [],
             'offset': []
+        }
+        self.sensor = {
+            'top': [],
+            'middle': [],
+            'bottom': []
         }
         #defining fluctuation cost
         self.j_total = 0
