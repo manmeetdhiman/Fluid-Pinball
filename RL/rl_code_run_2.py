@@ -21,10 +21,10 @@ class Actor(nn.Module):
 
         super(Actor, self).__init__()
 
-        self.hidden_one = nn.Linear(in_dim, 320)
-        self.hidden_two = nn.Linear(320, 320)
-        self.mu_layer = nn.Linear(320, out_dim)
-        self.log_std_layer = nn.Linear(320, out_dim)
+        self.hidden_one = nn.Linear(in_dim, 350)
+        self.hidden_two = nn.Linear(350, 350)
+        self.mu_layer = nn.Linear(350, out_dim)
+        self.log_std_layer = nn.Linear(350, out_dim)
 
     # Defining the activation function for the actor NN
 
@@ -50,9 +50,9 @@ class Critic(nn.Module):
     def __init__(self, in_dim: int):
         super(Critic, self).__init__()
 
-        self.hidden_one = nn.Linear(in_dim, 320)
-        self.hidden_two = nn.Linear(320, 320)
-        self.out = nn.Linear(320, 1)
+        self.hidden_one = nn.Linear(in_dim, 350)
+        self.hidden_two = nn.Linear(350, 350)
+        self.out = nn.Linear(350, 1)
 
     # Defining the activation function for the critic NN
     def forward(self, state: torch.Tensor) -> torch.Tensor:
@@ -67,9 +67,9 @@ class Critic(nn.Module):
 class PPO_Agent(object):
 
     # We basically pass and initialize all the parameters here
-    def __init__(self, obs_dim=7, act_dim=3, gamma=0.99, lamda=0.1,
-                 entropy_coef=0.001, epsilon=0.2, value_range=0.5,
-                 num_epochs=10, batch_size=50, actor_lr=0.001, critic_lr=0.001):
+    def __init__(self, obs_dim=6, act_dim=3, gamma=0.99, lamda=0.10,
+                 entropy_coef=0.001, epsilon=0.4, value_range=0.5,
+                 num_epochs=10, batch_size=105, actor_lr=1e-4, critic_lr=2e-4):
 
         self.gamma = gamma
         self.lamda = lamda
@@ -97,6 +97,8 @@ class PPO_Agent(object):
         self.log_probs = []
         self.values = []
         self.next_states = []
+        self.actor_losses=[]
+        self.critic_losses=[]
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
@@ -145,7 +147,7 @@ class PPO_Agent(object):
         return action, value, dist, mu, std
 
     # We update the weights of the actor and critic NNs based on the rewards, loss, and other parameters
-    def _update_weights(self):
+    def _update_weights(self, lr_manual_bool,actor_lr,critic_lr):
 
         self.rewards = torch.tensor(self.rewards).float()
         self.is_terminals = torch.tensor(self.is_terminals).float()
@@ -163,6 +165,9 @@ class PPO_Agent(object):
         log_probs = self.log_probs
         values = self.values
         advantages = returns - values[:-1]
+        
+        actor_losses=[]
+        critic_losses=[]
 
         for state, action, return_, old_log_prob, old_value, advantage in self.trajectories_data_generator(
                 states=states, actions=actions, returns=returns, log_probs=log_probs, values=values,
@@ -182,17 +187,22 @@ class PPO_Agent(object):
             actor_loss = (-torch.mean(torch.min(loss, clipped_loss))
                           - entropy * self.entropy_coef)
 
-            # critic loss, uncomment for clipped value loss too.
+            # compute critic loss
             cur_value = self.critic(state)
-            clipped_value = (
-                    old_value + torch.clamp(cur_value - old_value,
-                                            -self.value_range, self.value_range)
-            )
-            loss = (return_ - cur_value).pow(2)
-            clipped_loss = (return_ - clipped_value).pow(2)
-            critic_loss = torch.mean(torch.max(loss, clipped_loss))
+            
+            #clipped_value = (
+            #        old_value + torch.clamp(cur_value - old_value,
+            #                                -self.value_range, self.value_range)
+            #)
+            #loss = (return_ - cur_value).pow(2)
+            #clipped_loss = (return_ - clipped_value).pow(2)
+            #critic_loss = torch.mean(torch.max(loss, clipped_loss))
 
             critic_loss = (return_ - cur_value).pow(2).mean()
+            
+            if lr_manual_bool:
+                self.actor_optimizer=optim.Adam(self.actor.parameters(), lr=actor_lr)
+                self.critic_optimizer=optim.Adam(self.critic.parameters(), lr=critic_lr)
 
             # actor optimizer step
             self.actor_optimizer.zero_grad()
@@ -203,9 +213,16 @@ class PPO_Agent(object):
             self.critic_optimizer.zero_grad()
             critic_loss.backward()
             self.critic_optimizer.step()
+            
+            actor_losses=append(actor_loss.item())
+            critic_losses=append(critic_loss.item())
 
         self.clear_memory()
-
+        actor_loss=sum(actor_losses)/len(actor_losses)
+        critic_loss=sum(critic_losses)/len(critic_losses)
+        self.actor_losses.append(actor_loss)
+        self.critic_losses.append(critic_loss)
+        
     # We save the weights into actor and critic files here for post-processing or other fxns
     def _save_weights(self, policy_num: int):
 
@@ -371,18 +388,21 @@ def CFD_Run(iteration_ID, action_num, time_step_start, time_step_end, mot_data):
 
 # This class is set up for the Episodes/Iterations. The magic behind every episode occurs here
 class Iteration():
-    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=25, dur_actions=0.2105,
-                 CFD_timestep=5e-4, mot_timestep=5e-4, dur_ramps=0.04, free_stream_vel=1.5, sampling_periods=2.0):
+    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=15, dur_actions=1.00, dur_action_one=1.50,
+                 CFD_timestep=5e-4, mot_timestep=5e-4, dur_ramps=0.05, free_stream_vel=1.5, sampling_periods=0.9,
+                 CFD_timestep_spacing=5):
 
         self.iteration_ID = iteration_ID
         self.shedding_freq = shedding_freq
         self.num_actions = num_actions
         self.dur_actions = dur_actions
+        self.dur_action_one= dur_action_one
         self.CFD_timestep = CFD_timestep
         self.mot_timestep = mot_timestep
         self.dur_ramps = dur_ramps
         self.free_stream_vel = free_stream_vel
         self.sampling_periods = sampling_periods
+        self.CFD_timestep_spacing= CFD_timestep_spacing
 
         self.states = []
         self.actions = []
@@ -413,10 +433,12 @@ class Iteration():
         
         self.mot_timesteps_period = int(np.ceil(self.shedding_period / self.mot_timestep))
         self.mot_timesteps_action = int(np.ceil(self.mot_timesteps_period * self.dur_actions))
+        self.mot_timesteps_action_one= int(np.ceil(self.mot_timesteps_period * self.dur_action_one))
         self.mot_timesteps_ramp = int(np.ceil(self.mot_timesteps_period * self.dur_ramps))
         
         self.CFD_timesteps_period = int(np.ceil(self.shedding_period / self.CFD_timestep))
         self.CFD_timesteps_action = int(np.ceil(self.CFD_timesteps_period * self.dur_actions))
+        self.CFD_timesteps_action_one = int(np.ceil(self.CFD_timesteps_period * self.dur_action_one))
         self.CFD_timesteps_ramp = int(np.ceil(self.CFD_timesteps_period * self.dur_ramps))
 
     # The state is reset here during the start of episodes
@@ -427,10 +449,9 @@ class Iteration():
         front_mot_state = 0.0
         top_mot_state = 0.0
         bot_mot_state = 0.0
-        act_num_state = 0.0
 
         state = np.array([top_sens_state, mid_sens_state, bot_sens_state, front_mot_state,
-                          top_mot_state, bot_mot_state, act_num_state])
+                          top_mot_state, bot_mot_state])
         return state
 
     # The reward is calculated here using the J_fluc and J_act
@@ -462,13 +483,8 @@ class Iteration():
         J_act = np.sqrt(J_act / (3 * sampling_timesteps))
         J_act = J_act / self.free_stream_vel * 0.01
         
-        gamma = 0.0065
-        reward = -1*(J_fluc + gamma * J_act)
-
-        if self.action_counter <= 20:
-            action_factor = np.exp(0.3 * (self.action_counter - 20))
-        else:
-            action_factor = 1.0
+        act_gamma = 0.02
+        reward = -1*(J_fluc + act_gamma * J_act)
         
         reward_scaling = 17.5
         
@@ -508,13 +524,8 @@ class Iteration():
         top_mot_state = top_mot_state / 1045.0
         bot_mot_state = bot_mot_state / 1045.0
 
-        if self.action_counter <= 20:
-            action_num_state = np.exp(0.3 * (self.action_counter - 20))
-        else:
-            action_num_state = 1.0
-
         state = np.array([top_sens_state, mid_sens_state, bot_sens_state, front_mot_state, top_mot_state,
-                          bot_mot_state, action_num_state])
+                          bot_mot_state])
         return state
 
     # This function is probably not necessary for us but it basically checks if the CFD timesteps and motor timesteps
@@ -522,11 +533,17 @@ class Iteration():
     def convert_timestep_array(self, times_A, array_A, timestep_A):
         if timestep_A == self.mot_timestep:
             timestep_B = self.CFD_timestep
-            times_B = np.zeros(self.CFD_timesteps_action)
+            if self.action_counter==1:
+                times_B=np.zeros(self.CFD_timesteps_action_one)
+            else:
+                times_B = np.zeros(self.CFD_timesteps_action)
             array_B = np.zeros(len(times_B))
         else:
             timestep_B = self.mot_timestep
-            times_B = np.zeros(self.mot_timesteps_action)
+            if self.action_counter==1:
+                times_B = np.zeros(self.mot_timesteps_action_one)
+            else:
+                times_B=np.zeros(self.mot_timesteps_action)
             array_B = np.zeros(len(times_B))
 
         for i in range(len(times_B)):
@@ -561,7 +578,11 @@ class Iteration():
         if bot_cyl_RPS_ramp < -670:
             bot_cyl_RPS_ramp= -670
 
-        sampling_timesteps = int(self.CFD_timesteps_action - self.CFD_timesteps_ramp)
+        if self.action_counter==1:
+            sampling_timesteps = int(self.CFD_timesteps_action_one - self.CFD_timesteps_ramp)
+        else:
+            sampling_timesteps = int(self.CFD_timesteps_action - self.CFD_timesteps_ramp)
+            
         if len(self.front_cyl_RPS_PI) < (sampling_timesteps):
             front_cyl_RPS_old = 0
             top_cyl_RPS_old = 0
@@ -588,12 +609,19 @@ class Iteration():
         if bot_cyl_RPS_new < -1045:
             bot_cyl_RPS_new = -1045
 
-        des_times = np.zeros(self.mot_timesteps_action)
+        if self.action_counter==1:
+            des_times = np.zeros(self.mot_timesteps_action_one)
+        else:
+            des_times = np.zeros(self.mot_timesteps_action)
 
         for i in range(len(des_times)):
             des_times[i] = self.mot_timestep * i
-
-        times = np.zeros(10 + self.mot_timesteps_action)
+        
+        if self.action_counter==1:
+            times=np.zeros(10 + self.mot_timesteps_action_one)
+        else:
+            times = np.zeros(10 + self.mot_timesteps_action)
+        
         front_cyl_RPS_temp_mot = np.zeros(len(times))
         top_cyl_RPS_temp_mot = np.zeros(len(times))
         bot_cyl_RPS_temp_mot = np.zeros(len(times))
@@ -636,14 +664,14 @@ class Iteration():
             top_w0 = self.top_cyl_RPS_PI[-1]
             bot_w0 = self.bot_cyl_RPS_PI[-1]
 
-        front_cyl_RPS_temp_mot = PI_Motor(front_cyl_RPS_temp_mot, self.mot_timesteps_action, self.mot_timestep,
-                                          front_w0)
-
-        top_cyl_RPS_temp_mot = PI_Motor(top_cyl_RPS_temp_mot, self.mot_timesteps_action, self.mot_timestep,
-                                        top_w0)
-
-        bot_cyl_RPS_temp_mot = PI_Motor(bot_cyl_RPS_temp_mot, self.mot_timesteps_action, self.mot_timestep,
-                                        bot_w0)
+        if self.action_counter==1:
+            front_cyl_RPS_temp_mot = PI_Motor(front_cyl_RPS_temp_mot, self.mot_timesteps_action_one, self.mot_timestep, front_w0)
+            top_cyl_RPS_temp_mot = PI_Motor(top_cyl_RPS_temp_mot, self.mot_timesteps_action_one, self.mot_timestep,top_w0)
+            bot_cyl_RPS_temp_mot = PI_Motor(bot_cyl_RPS_temp_mot, self.mot_timesteps_action_one, self.mot_timestep,bot_w0)
+        else:
+            front_cyl_RPS_temp_mot = PI_Motor(front_cyl_RPS_temp_mot, self.mot_timesteps_action, self.mot_timestep,front_w0)
+            top_cyl_RPS_temp_mot = PI_Motor(top_cyl_RPS_temp_mot, self.mot_timesteps_action, self.mot_timestep,top_w0)
+            bot_cyl_RPS_temp_mot = PI_Motor(bot_cyl_RPS_temp_mot, self.mot_timesteps_action, self.mot_timestep,bot_w0)
 
         front_cyl_RPS_temp_CFD = self.convert_timestep_array(des_times, front_cyl_RPS_temp_mot, self.mot_timestep)
         top_cyl_RPS_temp_CFD = self.convert_timestep_array(des_times, top_cyl_RPS_temp_mot, self.mot_timestep)
@@ -656,13 +684,16 @@ class Iteration():
         mot_data = {'revolutions': [front_cyl_RPS_temp_CFD, top_cyl_RPS_temp_CFD, bot_cyl_RPS_temp_CFD]
             , 'freq':[0,0,0], 'amp':[0,0,0], 'offset':[0,0,0], 'phase':[0,0,0]}
 
-
         return mot_data
 
-    # This function is used to calculate the velocity data using the cubic splines
+    # This function is used to calculate the velocity data using the cubic splines. This is to interpolate between the 5 timesteps the CFD outputs. 
     def calculate_vel_data(self, vel_data,timesteps_spacing):
-        des_times=np.zeros(self.CFD_timesteps_action)
-        for i in range(self.CFD_timesteps_action):
+        if self.action_counter==1:
+            des_times=np.zeros(self.CFD_timesteps_action_one)
+        else:
+            des_times=np.zeros(self.CFD_timesteps_action)
+        
+        for i in range(len(des_times)):
             des_times[i]=i*self.CFD_timestep
         
         times=np.zeros(len(vel_data['top'])+1)
@@ -710,11 +741,15 @@ class Iteration():
             self.stds.append(std)
 
             mot_data = self.calculate_mot_data(action)
-            time_step_end = self.time_step_start + self.CFD_timesteps_action
+            
+            if self.action_counter==1:
+                time_step_end = self.time_step_start + self.CFD_timesteps_action_one
+            else:
+                time_step_end = self.time_step_start + self.CFD_timesteps_action
 
             vel_data = CFD_Run(self.iteration_ID, self.action_counter, self.time_step_start, time_step_end, mot_data)
             
-            vel_data_top,vel_data_mid,vel_data_bot=self.calculate_vel_data(vel_data,5)
+            vel_data_top,vel_data_mid,vel_data_bot=self.calculate_vel_data(vel_data,self.CFD_timestep_spacing)
 
             self.top_sens_values.extend(vel_data_top)
             self.mid_sens_values.extend(vel_data_mid)
@@ -722,6 +757,7 @@ class Iteration():
 
             reward = self.calculate_reward()
             state = self.calculate_state()
+            
             if self.action_counter < self.num_actions:
                 is_terminal = np.array([1.0])
             else:
@@ -749,17 +785,24 @@ class Iteration():
             pickle.dump(iteration_results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 # We define the parameters for both actor and critic NNs
-obs_dim = 7
+obs_dim = 6
 act_dim = 3
 gamma = 0.99
 lamda = 0.10
 entropy_coef = 0.001
-epsilon = 0.2
+epsilon = 0.4
 value_range = 0.5
 num_epochs = 10
-batch_size = 50
+batch_size = 105
 actor_lr = 1e-4
 critic_lr = 1e-4
+lr_manual_bool=True
+actor_lr_max=1e-4
+actor_lr_min=1e-4
+critic_lr_max=3e-4
+critic_lr_min=1e-4
+total_critic_losses=[]
+total_actor_losses=[]
 
 # We feed the NN parameters to the PPO agent class
 ppo_agent = PPO_Agent(obs_dim=obs_dim, act_dim=act_dim, gamma=gamma, lamda=lamda, entropy_coef=entropy_coef,
@@ -768,16 +811,17 @@ ppo_agent = PPO_Agent(obs_dim=obs_dim, act_dim=act_dim, gamma=gamma, lamda=lamda
 
 # We define the required CFD and RL defining parameters for the PPO agent here
 shedding_freq = 8.42
-dur_actions = 0.2105
+dur_actions = 1.00
+dur_action_one = 1.50
 CFD_timestep = 5e-4
 mot_timestep = 5e-4
-dur_ramps = 0.04
-num_actions = 25
-num_policies = 30
-num_iterations = 5
-total_rewards = []
+CFD_timestep_spacing=5
+dur_ramps = 0.05
+num_actions = 15
+num_policies = 40
+num_iterations = 7
 free_stream_vel = 1.5
-sampling_periods = 2
+sampling_periods = 0.9
 load_weights = False
 policy_num_load_weights = 0
 
@@ -792,13 +836,15 @@ if load_weights:
 # here into a pickle file
 
 for policy in range(policy_num_load_weights,num_policies):
+    actor_lr=(actor_lr_max-actor_lr_min)/(num_policies)*(num_policies-policy)+actor_lr_min
+    critic_lr=(critic_lr_max-critic_lr_min)/(num_policies)*(num_policies-policy)+critic_lr_min
     Iterations = []
     for iteration in range(num_iterations):
         iteration_ID = num_iterations * policy + iteration + 1
         Iterations.append(Iteration(iteration_ID=iteration_ID, shedding_freq=shedding_freq, num_actions=num_actions,
-                                    dur_actions=dur_actions, CFD_timestep=CFD_timestep, mot_timestep=mot_timestep,
-                                    dur_ramps=dur_ramps, free_stream_vel=free_stream_vel,
-                                    sampling_periods=sampling_periods))
+                                    dur_actions=dur_actions, dur_action_one=dur_action_one, CFD_timestep=CFD_timestep, 
+                                    mot_timestep=mot_timestep, dur_ramps=dur_ramps, free_stream_vel=free_stream_vel,
+                                    sampling_periods=sampling_periods, CFD_timestep_spacing=CFD_timestep_spacing))
     for iteration in range(num_iterations):
         Iterations[iteration].run_iteration()
     for iteration in range(num_iterations):
@@ -811,18 +857,18 @@ for policy in range(policy_num_load_weights,num_policies):
         ppo_agent.log_probs.extend(Iterations[iteration].log_probs)
         ppo_agent.values.extend(Iterations[iteration].values)
         ppo_agent.next_states.extend(Iterations[iteration].next_states)
-        total_reward = np.sum(Iterations[iteration].rewards)
-        total_rewards.append(total_reward)
         print('Iteration Number: ', Iterations[iteration].iteration_ID, ' Iteration Reward: ', total_reward)
 
     next_state = ppo_agent.next_states[-1]
     value = ppo_agent.critic.forward(torch.FloatTensor(next_state))
     value = value.detach().numpy()
     ppo_agent.values.append(value)
-    ppo_agent._update_weights()
+    ppo_agent._update_weights(lr_manual_bool,actor_lr,critic_lr)
     ppo_agent._save_weights((policy + 1))
     print('Weights Updated')
-    total_rewards_dictionary = {'total_rewards': total_rewards}
-    total_rewards_filename = 'total_rewards.pickle'
-    with open(total_rewards_filename, 'wb') as handle:
-        pickle.dump(total_rewards_dictionary, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    total_critic_losses.append(ppo_agent.critic_losses[-1])
+    total_actor_losses.append(ppo_agent.actor_losses[-1])
+    losses_dictionary = {'actor_losses': total_actor_losses,'critic_losses':,total_critic_losses}
+    losses_filename = 'total_losses.'+str(policy+1)+'.pickle'
+    with open(losses_filename, 'wb') as handle:
+        pickle.dump(losses_dictionary, handle, protocol=pickle.HIGHEST_PROTOCOL)
