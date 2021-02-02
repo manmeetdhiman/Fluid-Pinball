@@ -68,7 +68,7 @@ class PPO_Agent(object):
 
     # We basically pass and initialize all the parameters here
     def __init__(self, obs_dim=6, act_dim=3, gamma=0.99, lamda=0.10,
-                 entropy_coef=0.001, epsilon=0.4, value_range=0.5,
+                 entropy_coef=0.001, epsilon=0.35, value_range=0.9,
                  num_epochs=10, batch_size=105, actor_lr=1e-4, critic_lr=2e-4):
 
         self.gamma = gamma
@@ -422,9 +422,9 @@ class Iteration():
         self.top_cyl_RPS_PI = []
         self.bot_cyl_RPS_PI = []
 
-        self.top_sens_values = [1.5398,]
-        self.mid_sens_values = [1.1128,]
-        self.bot_sens_values = [1.5591,]
+        self.top_sens_values = [self.free_stream_vel,]
+        self.mid_sens_values = [self.free_stream_vel,]
+        self.bot_sens_values = [self.free_stream_vel,]
 
         self.action_counter = 0
         self.time_step_start = 1
@@ -443,12 +443,15 @@ class Iteration():
 
     # The state is reset here during the start of episodes
     def reset_state(self):
-        top_sens_state = 0.3105
-        mid_sens_state = 0.15975
-        bot_sens_state = 0.29325
-        front_mot_state = 0.0
-        top_mot_state = 0.0
-        bot_mot_state = 0.0
+        top_sens_var=0.1635
+        mid_sens_var=0.1700
+        bot_sens_var=0.1481
+        top_sens_state = 11.76*top_sens_var-1.35
+        mid_sens_state = 11.76*mid_sens_var-1.35
+        bot_sens_state = 11.76*bot_sens_var-1.35
+        front_mot_state = 0.00
+        top_mot_state = 0.00
+        bot_mot_state = 0.00
 
         state = np.array([top_sens_state, mid_sens_state, bot_sens_state, front_mot_state,
                           top_mot_state, bot_mot_state])
@@ -484,12 +487,12 @@ class Iteration():
         J_act = J_act / self.free_stream_vel * 0.01
         
         act_gamma = 0.02
-        reward = -1*(J_fluc + act_gamma * J_act)
         
-        reward_scaling = 17.5
+        J_tot = J_fluc + act_gamma * J_act
         
-        reward = reward * action_factor * reward_scaling
-
+        J_tot_max=0.170
+        
+        reward=-1*J_tot/J_tot_max
         reward = np.array([reward])
 
         return reward
@@ -501,15 +504,13 @@ class Iteration():
         else:
             sampling_timesteps = int(len(self.top_sens_values))
 
-        top_sens_state = np.var(self.top_sens_values[-sampling_timesteps:])
-        mid_sens_state = np.var(self.mid_sens_values[-sampling_timesteps:])
-        bot_sens_state = np.var(self.bot_sens_values[-sampling_timesteps:])
+        top_sens_var = np.var(self.top_sens_values[-sampling_timesteps:])
+        mid_sens_var = np.var(self.mid_sens_values[-sampling_timesteps:])
+        bot_sens_var = np.var(self.bot_sens_values[-sampling_timesteps:])
         
-        sens_state_scaling = 7.5
-
-        top_sens_state = top_sens_state / (self.free_stream_vel**2) * sens_state_scaling
-        mid_sens_state = mid_sens_state / (self.free_stream_vel**2) * sens_state_scaling
-        bot_sens_state = bot_sens_state / (self.free_stream_vel**2) * sens_state_scaling
+        top_sens_state = 11.76*top_sens_state-1.35 
+        mid_sens_state = 11.76*mid_sens_state-1.35
+        bot_sens_state = 11.75*bot_sens_state-1.35 
         
         if len(self.front_cyl_RPS_PI) >= (self.CFD_timesteps_action-self.CFD_timesteps_ramp):
             sampling_timesteps= int(self.CFD_timesteps_action-self.CFD_timesteps_ramp)
@@ -561,22 +562,22 @@ class Iteration():
     # This function calculates the ramp required based on the previous actions. Limits are in-built as well. It returns
     # the required motor data
     def calculate_mot_data(self, action):
-        front_cyl_RPS_ramp = action[0] * 325
-        top_cyl_RPS_ramp = action[1] * 325
-        bot_cyl_RPS_ramp = action[2] * 325
+        front_cyl_RPS_ramp = action[0] * 150
+        top_cyl_RPS_ramp = action[1] * 150
+        bot_cyl_RPS_ramp = action[2] * 150
         
-        if front_cyl_RPS_ramp > 670:
-            front_cyl_RPS_ramp = 670
-        if front_cyl_RPS_ramp < -670:
-            front_cyl_RPS_ramp= -670
-        if top_cyl_RPS_ramp > 670:
-            top_cyl_RPS_ramp = 670
-        if top_cyl_RPS_ramp < -670:
-            top_cyl_RPS_ramp= -670
-        if bot_cyl_RPS_ramp > 670:
-            bot_cyl_RPS_ramp = 670
-        if bot_cyl_RPS_ramp < -670:
-            bot_cyl_RPS_ramp= -670
+        if front_cyl_RPS_ramp > 315:
+            front_cyl_RPS_ramp = 315
+        if front_cyl_RPS_ramp < -315:
+            front_cyl_RPS_ramp= -315
+        if top_cyl_RPS_ramp > 315:
+            top_cyl_RPS_ramp = 315
+        if top_cyl_RPS_ramp < -315:
+            top_cyl_RPS_ramp= -315
+        if bot_cyl_RPS_ramp > 315:
+            bot_cyl_RPS_ramp = 315
+        if bot_cyl_RPS_ramp < -315:
+            bot_cyl_RPS_ramp= -315
 
         if self.action_counter==1:
             sampling_timesteps = int(self.CFD_timesteps_action_one - self.CFD_timesteps_ramp)
@@ -790,8 +791,8 @@ act_dim = 3
 gamma = 0.99
 lamda = 0.10
 entropy_coef = 0.001
-epsilon = 0.4
-value_range = 0.5
+epsilon = 0.35
+value_range = 0.9
 num_epochs = 10
 batch_size = 105
 actor_lr = 1e-4
@@ -863,12 +864,12 @@ for policy in range(policy_num_load_weights,num_policies):
     value = ppo_agent.critic.forward(torch.FloatTensor(next_state))
     value = value.detach().numpy()
     ppo_agent.values.append(value)
-    ppo_agent._update_weights(lr_manual_bool,actor_lr,critic_lr)
+    ppo_agent._update_weights(lr_manual_bool=lr_manual_bool,actor_lr=actor_lr,critic_lr=critic_lr)
     ppo_agent._save_weights((policy + 1))
     print('Weights Updated')
     total_critic_losses.append(ppo_agent.critic_losses[-1])
     total_actor_losses.append(ppo_agent.actor_losses[-1])
     losses_dictionary = {'actor_losses': total_actor_losses,'critic_losses':,total_critic_losses}
-    losses_filename = 'total_losses.'+str(policy+1)+'.pickle'
+    losses_filename = 'actor_critic_losses.'+str(policy+1)+'.pickle'
     with open(losses_filename, 'wb') as handle:
         pickle.dump(losses_dictionary, handle, protocol=pickle.HIGHEST_PROTOCOL)
