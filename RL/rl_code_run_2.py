@@ -872,7 +872,7 @@ for policy in range(policy_num_load_weights,num_policies):
     print('Weights Updated')
     total_critic_losses.append(ppo_agent.critic_losses[-1])
     total_actor_losses.append(ppo_agent.actor_losses[-1])
-    losses_dictionary = {'actor_losses': total_actor_losses,'critic_losses':,total_critic_losses}
+    losses_dictionary = {'actor_losses': total_actor_losses,'critic_losses':total_critic_losses}
     losses_filename = 'actor_critic_losses.'+str(policy+1)+'.pickle'
     with open(losses_filename, 'wb') as handle:
         pickle.dump(losses_dictionary, handle, protocol=pickle.HIGHEST_PROTOCOL)
