@@ -508,9 +508,9 @@ class Iteration():
         mid_sens_var = np.var(self.mid_sens_values[-sampling_timesteps:])
         bot_sens_var = np.var(self.bot_sens_values[-sampling_timesteps:])
         
-        top_sens_state = 11.76*top_sens_state-1.35 
-        mid_sens_state = 11.76*mid_sens_state-1.35
-        bot_sens_state = 11.75*bot_sens_state-1.35 
+        top_sens_state = 11.76*top_sens_var-1.35 
+        mid_sens_state = 11.76*mid_sens_var-1.35
+        bot_sens_state = 11.76*bot_sens_var-1.35 
         
         if len(self.front_cyl_RPS_PI) >= (self.CFD_timesteps_action-self.CFD_timesteps_ramp):
             sampling_timesteps= int(self.CFD_timesteps_action-self.CFD_timesteps_ramp)
