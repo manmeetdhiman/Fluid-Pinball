@@ -815,8 +815,8 @@ ppo_agent = PPO_Agent(obs_dim=obs_dim, act_dim=act_dim, gamma=gamma, lamda=lamda
 
 # We define the required CFD and RL defining parameters for the PPO agent here
 shedding_freq = 8.42
-dur_actions = 1.00
-dur_action_one = 1.50
+dur_actions = 1.0104
+dur_action_one = 1.5156
 CFD_timestep = 5e-4
 mot_timestep = 5e-4
 CFD_timestep_spacing=5
