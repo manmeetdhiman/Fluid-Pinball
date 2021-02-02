@@ -490,7 +490,7 @@ class Iteration():
         
         J_tot = J_fluc + act_gamma * J_act
         
-        J_tot_max=0.170
+        J_tot_max=0.1666
         
         reward=-1*J_tot/J_tot_max
         reward = np.array([reward])
@@ -785,7 +785,10 @@ class Iteration():
         with open(filename, 'wb') as handle:
             pickle.dump(iteration_results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-# We define the parameters for both actor and critic NNs
+
+            
+ ##################     MAIN LOOP BEGINS HERE     ###############################           
+ # We define the parameters for both actor and critic NNs
 obs_dim = 6
 act_dim = 3
 gamma = 0.99
