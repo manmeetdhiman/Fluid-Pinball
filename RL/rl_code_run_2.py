@@ -214,8 +214,8 @@ class PPO_Agent(object):
             critic_loss.backward()
             self.critic_optimizer.step()
             
-            actor_losses=append(actor_loss.item())
-            critic_losses=append(critic_loss.item())
+            actor_losses.append(actor_loss.item())
+            critic_losses.append(critic_loss.item())
 
         self.clear_memory()
         actor_loss=sum(actor_losses)/len(actor_losses)
