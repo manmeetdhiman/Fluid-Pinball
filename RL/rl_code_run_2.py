@@ -388,7 +388,7 @@ def CFD_Run(iteration_ID, action_num, time_step_start, time_step_end, mot_data):
 
 # This class is set up for the Episodes/Iterations. The magic behind every episode occurs here
 class Iteration():
-    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=15, dur_actions=1.00, dur_action_one=1.50,
+    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=15, dur_actions=1.0104, dur_action_one=1.5156,
                  CFD_timestep=5e-4, mot_timestep=5e-4, dur_ramps=0.05, free_stream_vel=1.5, sampling_periods=0.9,
                  CFD_timestep_spacing=5):
 
