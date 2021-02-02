@@ -29,8 +29,8 @@ class Actor(nn.Module):
     # Defining the activation function for the actor NN
 
     def forward(self, state: torch.Tensor):
-        x = F.tanh(self.hidden_one(state))
-        x = F.tanh(self.hidden_two(x))
+        x = torch.tanh(self.hidden_one(state))
+        x = torch.tanh(self.hidden_two(x))
 
         mu = torch.tanh(self.mu_layer(x))
         log_std = torch.tanh(self.log_std_layer(x))
