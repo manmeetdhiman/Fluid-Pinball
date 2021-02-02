@@ -388,7 +388,7 @@ def CFD_Run(iteration_ID, action_num, time_step_start, time_step_end, mot_data):
 
 # This class is set up for the Episodes/Iterations. The magic behind every episode occurs here
 class Iteration():
-    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=15, dur_actions=1.0104, dur_action_one=1.5156,
+    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=15, dur_actions=1.004198, dur_action_one=1.50838,
                  CFD_timestep=5e-4, mot_timestep=5e-4, dur_ramps=0.05, free_stream_vel=1.5, sampling_periods=0.9,
                  CFD_timestep_spacing=5):
 
@@ -815,8 +815,8 @@ ppo_agent = PPO_Agent(obs_dim=obs_dim, act_dim=act_dim, gamma=gamma, lamda=lamda
 
 # We define the required CFD and RL defining parameters for the PPO agent here
 shedding_freq = 8.42
-dur_actions = 1.0104
-dur_action_one = 1.5156
+dur_actions = 1.004198
+dur_action_one = 1.50838
 CFD_timestep = 5e-4
 mot_timestep = 5e-4
 CFD_timestep_spacing=5
@@ -861,7 +861,6 @@ for policy in range(policy_num_load_weights,num_policies):
         ppo_agent.log_probs.extend(Iterations[iteration].log_probs)
         ppo_agent.values.extend(Iterations[iteration].values)
         ppo_agent.next_states.extend(Iterations[iteration].next_states)
-        print('Iteration Number: ', Iterations[iteration].iteration_ID, ' Iteration Reward: ', total_reward)
 
     next_state = ppo_agent.next_states[-1]
     value = ppo_agent.critic.forward(torch.FloatTensor(next_state))
