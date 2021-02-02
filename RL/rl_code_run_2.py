@@ -69,7 +69,7 @@ class PPO_Agent(object):
     # We basically pass and initialize all the parameters here
     def __init__(self, obs_dim=6, act_dim=3, gamma=0.99, lamda=0.10,
                  entropy_coef=0.001, epsilon=0.35, value_range=0.9,
-                 num_epochs=10, batch_size=105, actor_lr=1e-4, critic_lr=2e-4):
+                 num_epochs=10, batch_size=105, actor_lr=1e-4, critic_lr=3e-4):
 
         self.gamma = gamma
         self.lamda = lamda
@@ -825,7 +825,7 @@ num_actions = 15
 num_policies = 40
 num_iterations = 7
 free_stream_vel = 1.5
-sampling_periods = 0.9
+sampling_periods = 0.90
 load_weights = False
 policy_num_load_weights = 0
 
