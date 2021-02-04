@@ -431,9 +431,9 @@ class Iteration():
         self.top_cyl_RPS_PI = []
         self.bot_cyl_RPS_PI = []
 
-        self.top_sens_values = [self.free_stream_vel, ]
-        self.mid_sens_values = [self.free_stream_vel, ]
-        self.bot_sens_values = [self.free_stream_vel, ]
+        self.top_sens_values = []
+        self.mid_sens_values = []
+        self.bot_sens_values = []
 
         self.action_counter = 0
         self.time_step_start = 1
@@ -455,9 +455,9 @@ class Iteration():
         top_sens_var = 0.1635
         mid_sens_var = 0.1700
         bot_sens_var = 0.1481
-        top_sens_state = 11.76 * top_sens_var - 1.35
-        mid_sens_state = 11.76 * mid_sens_var - 1.35
-        bot_sens_state = 11.76 * bot_sens_var - 1.35
+        top_sens_state = 3.5088 * top_sens_var - 1.1053
+        mid_sens_state = 3.5088 * mid_sens_var - 1.1053
+        bot_sens_state = 3.5088 * bot_sens_var - 1.1053
         front_mot_state = 0.00
         top_mot_state = 0.00
         bot_mot_state = 0.00
@@ -468,8 +468,8 @@ class Iteration():
 
     # The reward is calculated here using the J_fluc and J_act
     def calculate_reward(self):
-        if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods):
-            sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods)
+        if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing):
+            sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing)
         else:
             sampling_timesteps = int(len(self.top_sens_values))
 
@@ -499,7 +499,7 @@ class Iteration():
 
         J_tot = J_fluc + act_gamma * J_act
 
-        J_tot_max = 0.1666
+        J_tot_max = 0.200
 
         reward = -1 * J_tot / J_tot_max
         reward = np.array([reward])
@@ -508,8 +508,8 @@ class Iteration():
 
     # The state of the PPO agent in the environment is calculated which is fed to get the action
     def calculate_state(self):
-        if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods):
-            sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods)
+        if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing):
+            sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing)
         else:
             sampling_timesteps = int(len(self.top_sens_values))
 
@@ -517,9 +517,9 @@ class Iteration():
         mid_sens_var = np.var(self.mid_sens_values[-sampling_timesteps:])
         bot_sens_var = np.var(self.bot_sens_values[-sampling_timesteps:])
 
-        top_sens_state = 11.76 * top_sens_var - 1.35
-        mid_sens_state = 11.76 * mid_sens_var - 1.35
-        bot_sens_state = 11.76 * bot_sens_var - 1.35
+        top_sens_state = 3.5088 * top_sens_var - 1.1053
+        mid_sens_state = 3.5088 * mid_sens_var - 1.1053
+        bot_sens_state = 3.5088 * bot_sens_var - 1.1053
 
         if len(self.front_cyl_RPS_PI) >= (self.CFD_timesteps_action - self.CFD_timesteps_ramp):
             sampling_timesteps = int(self.CFD_timesteps_action - self.CFD_timesteps_ramp)
@@ -702,38 +702,6 @@ class Iteration():
 
         return mot_data
 
-    # This function is used to calculate the velocity data using the cubic splines. This is to interpolate between the 5 timesteps the CFD outputs.
-    def calculate_vel_data(self, vel_data, timesteps_spacing):
-        if self.action_counter == 1:
-            des_times = np.zeros(self.CFD_timesteps_action_one)
-        else:
-            des_times = np.zeros(self.CFD_timesteps_action)
-
-        for i in range(len(des_times)):
-            des_times[i] = i * self.CFD_timestep
-
-        times = np.zeros(len(vel_data['top']) + 1)
-        vel_data_top = np.zeros(len(times))
-        vel_data_mid = np.zeros(len(times))
-        vel_data_bot = np.zeros(len(times))
-        for i in range(len(times)):
-            if i == 0:
-                times[i] = -1 * self.CFD_timestep
-                vel_data_top[i] = self.top_sens_values[-1]
-                vel_data_mid[i] = self.mid_sens_values[-1]
-                vel_data_bot[i] = self.bot_sens_values[-1]
-            else:
-                times[i] = i * timesteps_spacing * self.CFD_timestep
-                vel_data_top[i] = vel_data['top'][(i - 1)]
-                vel_data_mid[i] = vel_data['mid'][(i - 1)]
-                vel_data_bot[i] = vel_data['bot'][(i - 1)]
-
-        vel_data_top = Spline(times, vel_data_top, des_times)
-        vel_data_mid = Spline(times, vel_data_mid, des_times)
-        vel_data_bot = Spline(times, vel_data_bot, des_times)
-
-        return vel_data_top, vel_data_mid, vel_data_bot
-
     # This function runs the iterations/episodes basically
     def run_iteration(self):
         state = self.reset_state()
@@ -765,7 +733,9 @@ class Iteration():
 
             vel_data = CFD_Run(self.iteration_ID, self.action_counter, self.time_step_start, time_step_end, mot_data)
 
-            vel_data_top, vel_data_mid, vel_data_bot = self.calculate_vel_data(vel_data, self.CFD_timestep_spacing)
+            vel_data_top = vel_data['top']
+            vel_data_mid = vel_data['mid']
+            vel_data_bot = vel_data['bot']
 
             self.top_sens_values.extend(vel_data_top)
             self.mid_sens_values.extend(vel_data_mid)
@@ -825,7 +795,9 @@ class Iteration():
                                                   t_end=time_step_end)
         print(vel_data)
 
-        vel_data_top, vel_data_mid, vel_data_bot = self.calculate_vel_data(vel_data, 5)
+        vel_data_top=vel_data['top']
+        vel_data_mid=vel_data['mid']
+        vel_data_bot=vel_data['bot']
 
         self.top_sens_values.extend(vel_data_top)
         self.mid_sens_values.extend(vel_data_mid)
