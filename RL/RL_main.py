@@ -735,7 +735,11 @@ class Iteration():
         self.stds.append(std)
 
         mot_data = self.calculate_mot_data(action)
-        time_step_end = self.time_step_start + self.CFD_timesteps_action
+        
+        if self.action_counter == 1:
+            time_step_end = self.time_step_start + self.CFD_timesteps_action_one
+        else:
+            time_step_end = self.time_step_start + self.CFD_timesteps_action
 
         vel_data = CFD.cfd.RL_run_CFD(iteration=self.iteration_ID, action=self.action_counter,
                                       t_start=self.time_step_start, t_end=time_step_end,
