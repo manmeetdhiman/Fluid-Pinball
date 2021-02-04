@@ -353,47 +353,6 @@ def Spline(times, rotations, des_times, k=3):
     des_rotations = interpolate.splev(des_times, spline)
     return des_rotations
 
-
-# This function is for getting the velocity data of the 3 cylinders
-def CFD_Run(iteration_ID, action_num, time_step_start, time_step_end, mot_data):
-    front_cyl = mot_data['revolutions'][0]
-    top_cyl = mot_data['revolutions'][1]
-    bot_cyl = mot_data['revolutions'][2]
-
-    front_cyl_avg = np.mean(front_cyl)
-    top_cyl_avg = np.mean(top_cyl)
-    bot_cyl_avg = np.mean(bot_cyl)
-
-    top_sens = np.zeros(len(front_cyl) // 5)
-    mid_sens = np.zeros(len(front_cyl) // 5)
-    bot_sens = np.zeros(len(front_cyl) // 5)
-
-    if top_cyl_avg * bot_cyl_avg < 0:
-        front_cyl_coeff = front_cyl_avg / 500
-        top_cyl_coeff = 1 / (top_cyl_avg / 100)
-        bot_cyl_coeff = 1 / (bot_cyl_avg / 100)
-    elif top_cyl_avg * bot_cyl_avg > 0 and (top_cyl_avg + bot_cyl_avg) > 1000:
-        front_cyl_coeff = front_cyl_avg / 500
-        top_cyl_coeff = top_cyl_avg / 500
-        bot_cyl_coeff = bot_cyl_avg / 500
-    else:
-        front_cyl_coeff = front_cyl_avg / 500
-        top_cyl_coeff = 1.5
-        bot_cyl_coeff = 1.5
-
-    front_cyl_coeff = front_cyl_avg / 500
-    top_cyl_coeff = 1 / (top_cyl_avg / 100)
-    bot_cyl_coeff = 1 / (bot_cyl_avg / 100)
-    for i in range(len(top_sens)):
-        time = 2 * 3.14 / len(front_cyl) * (i + 1) * 5
-        top_sens[i] = front_cyl_coeff * np.sin(time)
-        mid_sens[i] = top_cyl_coeff * np.sin(time)
-        bot_sens[i] = bot_cyl_coeff * np.sin(time)
-
-    vel_data = {'top': top_sens, 'mid': mid_sens, 'bot': bot_sens}
-    return vel_data
-
-
 # This class is set up for the Episodes/Iterations. The magic behind every episode occurs here
 class Iteration():
     def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=15, dur_actions=1.004198, dur_action_one=1.50838,
