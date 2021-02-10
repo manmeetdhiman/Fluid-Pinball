@@ -131,12 +131,12 @@ def plot_regular(y_data,x_label,y_label):
     plt.figure(figsize=(15,7.5))
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
-    m, b = np.polyfit(x_data, y_data, 1)
+    # m, b = np.polyfit(x_data, y_data, 1)
     plt.plot(x_data, y_data)
-    plt.plot(x_data, m * x_data + b)
+    # plt.plot(x_data, m * x_data + b)
     plt.xlabel(x_label, fontsize=15)
     plt.ylabel(y_label, fontsize=15)
-    print(m,b)
+    # print(m,b)
 
 
 def plot_policy_regular(y_data,x_label,y_label,num_iterations):
@@ -422,27 +422,28 @@ plot_policy_average(avg_J_tots,'Policy Number','Policy Average J_Tots',num_itera
 # b = np.mean((np.array(actions_state_2)))
 # c = np.mean((np.array(actions_state_2)))
 
-for i in range(len(master_data)):
-    json_dict = {'iteration_ID': 0, 'motor_data': {'front': [], 'top': [], 'bot': []},
-                 'sensor_data': {'top': [], 'mid': [], 'bot': []},
-                 'costs': {'J_fluc': 0, 'gamma': gamma_act, 'J_act': 0, 'J_tot': 0},
-                 'total_rewards': 0}
-    json_dict['iteration_ID'] = master_data[i]['iteration_ID']
-    json_dict['motor_data']['front'].extend(master_data[i]['front_cyl_RPS_PI'])
-    json_dict['motor_data']['top'].extend(master_data[i]['top_cyl_RPS_PI'])
-    json_dict['motor_data']['bot'].extend(master_data[i]['bot_cyl_RPS_PI'])
-    json_dict['sensor_data']['top'].extend(master_data[i]['top_sens_values'])
-    json_dict['sensor_data']['mid'].extend(master_data[i]['mid_sens_values'])
-    json_dict['sensor_data']['bot'].extend(master_data[i]['bot_sens_values'])
-    json_dict['costs']['J_fluc'] = avg_J_flucs[i]
-    json_dict['costs']['gamma'] = gamma_act
-    json_dict['costs']['J_act'] = avg_J_acts[i]
-    json_dict['costs']['J_tot'] = avg_J_tots[i]
-    json_dict['average_reward'] = avg_rewards[i]
+if Json_files==True:
+    for i in range(len(master_data)):
+        json_dict = {'iteration_ID': 0, 'motor_data': {'front': [], 'top': [], 'bot': []},
+                     'sensor_data': {'top': [], 'mid': [], 'bot': []},
+                     'costs': {'J_fluc': 0, 'gamma': gamma_act, 'J_act': 0, 'J_tot': 0},
+                     'total_rewards': 0}
+        json_dict['iteration_ID'] = master_data[i]['iteration_ID']
+        json_dict['motor_data']['front'].extend(master_data[i]['front_cyl_RPS_PI'])
+        json_dict['motor_data']['top'].extend(master_data[i]['top_cyl_RPS_PI'])
+        json_dict['motor_data']['bot'].extend(master_data[i]['bot_cyl_RPS_PI'])
+        json_dict['sensor_data']['top'].extend(master_data[i]['top_sens_values'])
+        json_dict['sensor_data']['mid'].extend(master_data[i]['mid_sens_values'])
+        json_dict['sensor_data']['bot'].extend(master_data[i]['bot_sens_values'])
+        json_dict['costs']['J_fluc'] = avg_J_flucs[i]
+        json_dict['costs']['gamma'] = gamma_act
+        json_dict['costs']['J_act'] = avg_J_acts[i]
+        json_dict['costs']['J_tot'] = avg_J_tots[i]
+        json_dict['average_reward'] = avg_rewards[i]
 
-    iteration = master_data[i]['iteration_ID']
-    filename = 'json_files/data_iteration_' + str(iteration) + '.json'
-    with open(filename, 'w') as outfile:
-        json.dump(json_dict, outfile)
+        iteration = master_data[i]['iteration_ID']
+        filename = 'json_files/data_iteration_' + str(iteration) + '.json'
+        with open(filename, 'w') as outfile:
+            json.dump(json_dict, outfile)
 
 plt.show()
