@@ -71,9 +71,9 @@ class Critic(nn.Module):
 class PPO_Agent(object):
 
     # We basically pass and initialize all the parameters here
-    def __init__(self, obs_dim=6, act_dim=3, gamma=0.99, lamda=0.10,
+    def __init__(self, obs_dim=15, act_dim=12, gamma=0.99, lamda=0.10,
                  entropy_coef=0.001, epsilon=0.35, value_range=0.9,
-                 num_epochs=12, batch_size=105, actor_lr=1e-4, critic_lr=3e-4):
+                 num_epochs=15, batch_size=150, actor_lr=1e-4, critic_lr=4e-4):
 
         self.gamma = gamma
         self.lamda = lamda
@@ -193,15 +193,6 @@ class PPO_Agent(object):
 
             # compute critic loss
             cur_value = self.critic(state)
-
-            # clipped_value = (
-            #        old_value + torch.clamp(cur_value - old_value,
-            #                                -self.value_range, self.value_range)
-            # )
-            # loss = (return_ - cur_value).pow(2)
-            # clipped_loss = (return_ - clipped_value).pow(2)
-            # critic_loss = torch.mean(torch.max(loss, clipped_loss))
-
             critic_loss = (return_ - cur_value).pow(2).mean()
 
             if lr_manual_bool:
@@ -393,6 +384,21 @@ class Iteration():
         self.top_sens_values = []
         self.mid_sens_values = []
         self.bot_sens_values = []
+        
+        self.front_cyl_offset=[]
+        self.front_cyl_phase=[]
+        self.front_cyl_amp=[]
+        self.front_cyl_freq=[]
+        
+        self.top_cyl_offset=[]
+        self.top_cyl_phase=[]
+        self.top_cyl_amp=[]
+        self.top_cyl_freq=[]
+ 
+        self.bot_cyl_offset=[]
+        self.bot_cyl_phase=[]
+        self.bot_cyl_amp=[]
+        self.bot_cyl_freq=[]
 
         self.action_counter = 0
         self.time_step_start = 1
@@ -417,12 +423,26 @@ class Iteration():
         top_sens_state = 4.26 * top_sens_var - 1.13
         mid_sens_state = 4.26 * mid_sens_var - 1.13
         bot_sens_state = 4.26 * bot_sens_var - 1.13
-        front_mot_state = 0.00
-        top_mot_state = 0.00
-        bot_mot_state = 0.00
+        
+        front_mot_state_offset = 0.00
+        front_mot_state_amp=0.00
+        front_mot_state_phase=0.00
+        front_mot_state_freq=0.00
+        
+        top_mot_state_offset = 0.00
+        top_mot_state_amp=0.00
+        top_mot_state_phase=0.00
+        top_mot_state_freq=0.00
+        
+        bot_mot_state_offset = 0.00
+        bot_mot_state_amp=0.00
+        bot_mot_state_phase=0.00
+        bot_mot_state_freq=0.00
 
-        state = np.array([top_sens_state, mid_sens_state, bot_sens_state, front_mot_state,
-                          top_mot_state, bot_mot_state])
+        state = np.array([top_sens_state, mid_sens_state, bot_sens_state, 
+                          front_mot_state_offset,front_mot_state_amp,front_mot_state_phase,front_mot_state_freq,
+                          top_mot_state_offset,top_mot_state_amp,top_mot_state_phase,top_mot_state_freq,
+                          bot_mot_state_offset,bot_mot_state_amp,bot_mot_state_phase,bot_mot_state_freq])
         return state
 
     # The reward is calculated here using the J_fluc and J_act
@@ -480,21 +500,25 @@ class Iteration():
         mid_sens_state = 4.26 * mid_sens_var - 1.13
         bot_sens_state = 4.26 * bot_sens_var - 1.13
 
-        if len(self.front_cyl_RPS_PI) >= (self.CFD_timesteps_action - self.CFD_timesteps_ramp):
-            sampling_timesteps = int(self.CFD_timesteps_action - self.CFD_timesteps_ramp)
-        else:
-            sampling_timesteps = int(len(self.front_cyl_RPS_PI))
+        front_mot_state_offset = 
+        front_mot_state_amp=
+        front_mot_state_phase=
+        front_mot_state_freq=
+        
+        top_mot_state_offset =
+        top_mot_state_amp=
+        top_mot_state_phase=
+        top_mot_state_freq=
+        
+        bot_mot_state_offset = 
+        bot_mot_state_amp=
+        bot_mot_state_phase=
+        bot_mot_state_freq=
 
-        front_mot_state = np.mean(self.front_cyl_RPS_PI[-sampling_timesteps:])
-        top_mot_state = np.mean(self.top_cyl_RPS_PI[-sampling_timesteps:])
-        bot_mot_state = np.mean(self.bot_cyl_RPS_PI[-sampling_timesteps:])
-
-        front_mot_state = front_mot_state / 1045.0
-        top_mot_state = top_mot_state / 1045.0
-        bot_mot_state = bot_mot_state / 1045.0
-
-        state = np.array([top_sens_state, mid_sens_state, bot_sens_state, front_mot_state, top_mot_state,
-                          bot_mot_state])
+        state = np.array([top_sens_state, mid_sens_state, bot_sens_state, 
+                          front_mot_state_offset,front_mot_state_amp,front_mot_state_phase,front_mot_state_freq,
+                          top_mot_state_offset,top_mot_state_amp,top_mot_state_phase,top_mot_state_freq,
+                          bot_mot_state_offset,bot_mot_state_amp,bot_mot_state_phase,bot_mot_state_freq])
         return state
 
     # This function is probably not necessary for us but it basically checks if the CFD timesteps and motor timesteps
@@ -532,9 +556,20 @@ class Iteration():
     def calculate_mot_data(self, action):
         print(f'Calculating motor data iteration{self.iteration_ID}-action{action}')
 
-        front_cyl_RPS_ramp = action[0] * 150
-        top_cyl_RPS_ramp = action[1] * 150
-        bot_cyl_RPS_ramp = action[2] * 150
+        front_cyl_offset_ramp = action[0] * 150
+        front_cyl_amp_ramp=
+        front_cyl_phase=
+        front_cyl_freq=
+        
+        top_cyl_offset_ramp = action[1] * 150
+        top_cyl_amp_ramp=
+        top_cyl_phase=
+        top_cyl_freq=
+        
+        bot_cyl_offset_ramp = action[2] * 150
+        bot_cyl_amp_ramp=
+        bot_cyl_phase=
+        bot_cyl_freq=
 
         if front_cyl_RPS_ramp > 315:
             front_cyl_RPS_ramp = 315
