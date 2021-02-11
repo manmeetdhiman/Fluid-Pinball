@@ -385,20 +385,20 @@ class Iteration():
         self.mid_sens_values = []
         self.bot_sens_values = []
         
-        self.front_cyl_offset=[]
-        self.front_cyl_phase=[]
-        self.front_cyl_amp=[]
-        self.front_cyl_freq=[]
+        self.state_front_cyl_offset=[]
+        self.state_front_cyl_phase=[]
+        self.state_front_cyl_amp=[]
+        self.state_front_cyl_freq=[]
         
-        self.top_cyl_offset=[]
-        self.top_cyl_phase=[]
-        self.top_cyl_amp=[]
-        self.top_cyl_freq=[]
+        self.state_top_cyl_offset=[]
+        self.state_top_cyl_phase=[]
+        self.state_top_cyl_amp=[]
+        self.state_top_cyl_freq=[]
  
-        self.bot_cyl_offset=[]
-        self.bot_cyl_phase=[]
-        self.bot_cyl_amp=[]
-        self.bot_cyl_freq=[]
+        self.state_bot_cyl_offset=[]
+        self.state_bot_cyl_phase=[]
+        self.state_bot_cyl_amp=[]
+        self.state_bot_cyl_freq=[]
 
         self.action_counter = 0
         self.time_step_start = 1
@@ -500,20 +500,20 @@ class Iteration():
         mid_sens_state = 4.26 * mid_sens_var - 1.13
         bot_sens_state = 4.26 * bot_sens_var - 1.13
 
-        front_mot_state_offset = 
-        front_mot_state_amp=
-        front_mot_state_phase=
-        front_mot_state_freq=
+        front_mot_state_offset = self.state_front_cyl_offset[-1]
+        front_mot_state_amp= self.state_front_cyl_amp [-1]
+        front_mot_state_phase= self.state_front_cyl_phase[-1]
+        front_mot_state_freq= self.state_front_cyl_freq[-1]
         
-        top_mot_state_offset =
-        top_mot_state_amp=
-        top_mot_state_phase=
-        top_mot_state_freq=
+        top_mot_state_offset = self.state_top_cyl_offset[-1]
+        top_mot_state_amp= self.state_top_cyl_amp [-1]
+        top_mot_state_phase= self.state_top_cyl_phase[-1]
+        top_mot_state_freq= self.state_top_cyl_freq[-1]
         
-        bot_mot_state_offset = 
-        bot_mot_state_amp=
-        bot_mot_state_phase=
-        bot_mot_state_freq=
+        bot_mot_state_offset = self.state_bot_cyl_offset[-1]
+        bot_mot_state_amp= self.state_bot_cyl_amp [-1]
+        bot_mot_state_phase= self.state_bot_cyl_phase[-1]
+        bot_mot_state_freq= self.state_bot_cyl_freq[-1]
 
         state = np.array([top_sens_state, mid_sens_state, bot_sens_state, 
                           front_mot_state_offset,front_mot_state_amp,front_mot_state_phase,front_mot_state_freq,
@@ -555,65 +555,53 @@ class Iteration():
     # the required motor data
     def calculate_mot_data(self, action):
         print(f'Calculating motor data iteration{self.iteration_ID}-action{action}')
-
-        front_cyl_offset_ramp = action[0] * 150
-        front_cyl_amp_ramp=
-        front_cyl_phase=
-        front_cyl_freq=
         
-        top_cyl_offset_ramp = action[1] * 150
-        top_cyl_amp_ramp=
-        top_cyl_phase=
-        top_cyl_freq=
+        action_clipped=np.zeros(len(action))
         
-        bot_cyl_offset_ramp = action[2] * 150
-        bot_cyl_amp_ramp=
-        bot_cyl_phase=
-        bot_cyl_freq=
+        for i in range(len(action_clipped)):
+            if action[i]>1.75:
+                action_clipped[i]=1.75
+            elif action[i]<-1.75:
+                action_clipped[i]=-1.75
+            else:
+                action_clipped[i]=action[i]
+        
+        self.state_front_cyl_offset.append(action_clipped[0]/1.75)
+        self.state_front_cyl_phase.append(action_clipped[1]/1.75)
+        self.state_front_cyl_amp.append(action_clipped[2]/1.75)
+        self.state_front_cyl_freq.append(action_clipped[3]/1.75)
+        
+        self.state_top_cyl_offset.append(action_clipped[4]/1.75)
+        self.state_top_cyl_phase.append(action_clipped[5]/1.75)
+        self.state_top_cyl_amp.append(action_clipped[6]/1.75)
+        self.state_top_cyl_freq.append(action_clipped[7]/1.75)
+        
+        self.state_bot_cyl_offset.append(action_clipped[8]/1.75)
+        self.state_bot_cyl_phase.append(action_clipped[9]/1.75)
+        self.state_bot_cyl_amp.append(action_clipped[10]/1.75)
+        self.state_bot_cyl_freq.append(action_clipped[11]/1.75)
 
-        if front_cyl_RPS_ramp > 315:
-            front_cyl_RPS_ramp = 315
-        if front_cyl_RPS_ramp < -315:
-            front_cyl_RPS_ramp = -315
-        if top_cyl_RPS_ramp > 315:
-            top_cyl_RPS_ramp = 315
-        if top_cyl_RPS_ramp < -315:
-            top_cyl_RPS_ramp = -315
-        if bot_cyl_RPS_ramp > 315:
-            bot_cyl_RPS_ramp = 315
-        if bot_cyl_RPS_ramp < -315:
-            bot_cyl_RPS_ramp = -315
-
-        if self.action_counter == 1:
-            sampling_timesteps = int(self.CFD_timesteps_action_one - self.CFD_timesteps_ramp)
-        else:
-            sampling_timesteps = int(self.CFD_timesteps_action - self.CFD_timesteps_ramp)
-
-        if len(self.front_cyl_RPS_PI) < (sampling_timesteps):
-            front_cyl_RPS_old = 0
-            top_cyl_RPS_old = 0
-            bot_cyl_RPS_old = 0
-        else:
-            front_cyl_RPS_old = np.mean(self.front_cyl_RPS_PI[-sampling_timesteps:])
-            top_cyl_RPS_old = np.mean(self.top_cyl_RPS_PI[-sampling_timesteps:])
-            bot_cyl_RPS_old = np.mean(self.bot_cyl_RPS_PI[-sampling_timesteps:])
-
-        front_cyl_RPS_new = front_cyl_RPS_old + front_cyl_RPS_ramp
-        top_cyl_RPS_new = top_cyl_RPS_old + top_cyl_RPS_ramp
-        bot_cyl_RPS_new = bot_cyl_RPS_old + bot_cyl_RPS_ramp
-
-        if front_cyl_RPS_new > 1045:
-            front_cyl_RPS_new = 1045
-        if front_cyl_RPS_new < -1045:
-            front_cyl_RPS_new = -1045
-        if top_cyl_RPS_new > 1045:
-            top_cyl_RPS_new = 1045
-        if top_cyl_RPS_new < -1045:
-            top_cyl_RPS_new = -1045
-        if bot_cyl_RPS_new > 1045:
-            bot_cyl_RPS_new = 1045
-        if bot_cyl_RPS_new < -1045:
-            bot_cyl_RPS_new = -1045
+        front_cyl_offset = action_clipped[0]*590
+        front_cyl_amp= action_clipped[1]*590
+        front_cyl_phase= action_clipped[2]*1.794
+        front_cyl_freq= action_clipped[3]*2.406+4.21
+        
+        top_cyl_offset = action_clipped[4]*590
+        top_cyl_amp= action_clipped[5]*590
+        top_cyl_phase= action_clipped[6]*1.794
+        top_cyl_freq= action_clipped[7]*2.406+4.21
+        
+        bot_cyl_offset = action_clipped[8]*590
+        bot_cyl_amp= action_clipped[9]*590
+        bot_cyl_phase= action_clipped[10]*1.794
+        bot_cyl_freq= action_clipped[11]*2.406+4.21
+        
+        if front_cyl_freq<=5:
+            front_cyl_freq=0
+        if top_cyl_freq<=5:
+            top_cyl_freq=0
+        if bot_cyl_freq<=5:
+            bot_cyl_freq=0
 
         if self.action_counter == 1:
             des_times = np.zeros(self.mot_timesteps_action_one)
@@ -645,9 +633,9 @@ class Iteration():
                 bot_cyl_RPS_temp_mot[i] = 0
             elif i >= 5:
                 times[i] = self.mot_timestep * self.mot_timesteps_ramp + (i - 5) * self.mot_timestep
-                front_cyl_RPS_temp_mot[i] = front_cyl_RPS_new
-                top_cyl_RPS_temp_mot[i] = top_cyl_RPS_new
-                bot_cyl_RPS_temp_mot[i] = bot_cyl_RPS_new
+                front_cyl_RPS_temp_mot[i] = front_cyl_offset+front_cyl_amp*np.sin(2*3.14*front_cyl_freq*(i-5)*self.mot_timestep+front_cyl_phase) 
+                top_cyl_RPS_temp_mot[i] = top_cyl_offset+top_cyl_amp*np.sin(2*3.14*top_cyl_freq*(i-5)*self.mot_timestep+top_cyl_phase)
+                bot_cyl_RPS_temp_mot[i] = bot_cyl_offset+bot_cyl_amp*np.sin(2*3.14*bot_cyl_freq*(i-5)*self.mot_timestep+bot_cyl_phase)
 
         front_cyl_RPS_temp_mot = Spline(times, front_cyl_RPS_temp_mot, des_times)
         top_cyl_RPS_temp_mot = Spline(times, top_cyl_RPS_temp_mot, des_times)
@@ -859,21 +847,21 @@ def _run_action(iteration):
 
 ##################     MAIN LOOP BEGINS HERE     ###############################
 # We define the parameters for both actor and critic NNs
-obs_dim = 6
-act_dim = 3
+obs_dim = 15
+act_dim = 12
 gamma = 0.99
 lamda = 0.10
 entropy_coef = 0.001
 epsilon = 0.35
 value_range = 0.9
-num_epochs = 10
+num_epochs = 15
 batch_size = 150
 actor_lr = 1e-4
 critic_lr = 1e-4
 lr_manual_bool = True
 actor_lr_max = 1e-4
 actor_lr_min = 1e-4
-critic_lr_max = 3e-4
+critic_lr_max = 3.5e-4
 critic_lr_min = 1e-4
 total_critic_losses = []
 total_actor_losses = []
