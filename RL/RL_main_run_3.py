@@ -386,18 +386,18 @@ class Iteration():
         self.bot_sens_values = []
         
         self.state_front_cyl_offset=[]
-        self.state_front_cyl_phase=[]
         self.state_front_cyl_amp=[]
+        self.state_front_cyl_phase=[]
         self.state_front_cyl_freq=[]
         
         self.state_top_cyl_offset=[]
-        self.state_top_cyl_phase=[]
         self.state_top_cyl_amp=[]
+        self.state_top_cyl_phase=[]
         self.state_top_cyl_freq=[]
  
         self.state_bot_cyl_offset=[]
-        self.state_bot_cyl_phase=[]
         self.state_bot_cyl_amp=[]
+        self.state_bot_cyl_phase=[]
         self.state_bot_cyl_freq=[]
 
         self.action_counter = 0
@@ -567,18 +567,18 @@ class Iteration():
                 action_clipped[i]=action[i]
         
         self.state_front_cyl_offset.append(action_clipped[0]/1.75)
-        self.state_front_cyl_phase.append(action_clipped[1]/1.75)
-        self.state_front_cyl_amp.append(action_clipped[2]/1.75)
+        self.state_front_cyl_amp.append(action_clipped[1]/1.75)
+        self.state_front_cyl_phase.append(action_clipped[2]/1.75)
         self.state_front_cyl_freq.append(action_clipped[3]/1.75)
         
         self.state_top_cyl_offset.append(action_clipped[4]/1.75)
-        self.state_top_cyl_phase.append(action_clipped[5]/1.75)
-        self.state_top_cyl_amp.append(action_clipped[6]/1.75)
+        self.state_top_cyl_amp.append(action_clipped[5]/1.75)
+        self.state_top_cyl_phase.append(action_clipped[6]/1.75)
         self.state_top_cyl_freq.append(action_clipped[7]/1.75)
         
         self.state_bot_cyl_offset.append(action_clipped[8]/1.75)
-        self.state_bot_cyl_phase.append(action_clipped[9]/1.75)
-        self.state_bot_cyl_amp.append(action_clipped[10]/1.75)
+        self.state_bot_cyl_amp.append(action_clipped[9]/1.75)
+        self.state_bot_cyl_phase.append(action_clipped[10]/1.75)
         self.state_bot_cyl_freq.append(action_clipped[11]/1.75)
 
         front_cyl_offset = action_clipped[0]*590
