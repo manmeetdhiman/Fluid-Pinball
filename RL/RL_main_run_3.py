@@ -636,6 +636,18 @@ class Iteration():
                 front_cyl_RPS_temp_mot[i] = front_cyl_offset+front_cyl_amp*np.sin(2*3.14*front_cyl_freq*(i-5)*self.mot_timestep+front_cyl_phase) 
                 top_cyl_RPS_temp_mot[i] = top_cyl_offset+top_cyl_amp*np.sin(2*3.14*top_cyl_freq*(i-5)*self.mot_timestep+top_cyl_phase)
                 bot_cyl_RPS_temp_mot[i] = bot_cyl_offset+bot_cyl_amp*np.sin(2*3.14*bot_cyl_freq*(i-5)*self.mot_timestep+bot_cyl_phase)
+                if front_cyl_RPS_temp_mot[i]>1045:
+                    front_cyl_RPS_temp_mot[i]=1045
+                if front_cyl_RPS_temp_mot[i]<-1045:
+                    front_cyl_RPS_temp_mot[i]=-1045
+                if top_cyl_RPS_temp_mot[i]>1045:
+                    top_cyl_RPS_temp_mot[i]=1045
+                if top_cyl_RPS_temp_mot[i]<-1045:
+                    top_cyl_RPS_temp_mot[i]=-1045
+                if bot_cyl_RPS_temp_mot[i]>1045:
+                    bot_cyl_RPS_temp_mot[i]=1045
+                if bot_cyl_RPS_temp_mot[i]<-1045:
+                    bot_cyl_RPS_temp_mot[i]=-1045
 
         front_cyl_RPS_temp_mot = Spline(times, front_cyl_RPS_temp_mot, des_times)
         top_cyl_RPS_temp_mot = Spline(times, top_cyl_RPS_temp_mot, des_times)
@@ -955,7 +967,7 @@ def main():
         total_critic_losses.append(ppo_agent.critic_losses[-1])
         total_actor_losses.append(ppo_agent.actor_losses[-1])
         losses_dictionary = {'actor_losses': total_actor_losses, 'critic_losses': total_critic_losses}
-        losses_filename = 'actor_critic_losses.' + str(policy + 1) + '.pickle'
+        losses_filename = 'actor_critic_losses_' + str(policy + 1) + '.pickle'
         with open(losses_filename, 'wb') as handle:
             pickle.dump(losses_dictionary, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
