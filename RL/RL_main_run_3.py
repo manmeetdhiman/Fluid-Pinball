@@ -73,7 +73,7 @@ class PPO_Agent(object):
     # We basically pass and initialize all the parameters here
     def __init__(self, obs_dim=15, act_dim=12, gamma=0.99, lamda=0.10,
                  entropy_coef=0.001, epsilon=0.35, value_range=0.9,
-                 num_epochs=15, batch_size=150, actor_lr=1e-4, critic_lr=4e-4):
+                 num_epochs=15, batch_size=150, actor_lr=1e-4, critic_lr=3.5e-4):
 
         self.gamma = gamma
         self.lamda = lamda
@@ -583,24 +583,24 @@ class Iteration():
 
         front_cyl_offset = action_clipped[0]*333
         front_cyl_amp= action_clipped[1]*333
-        front_cyl_phase= action_clipped[2]*1.05
+        front_cyl_phase= action_clipped[2]*1.046
         front_cyl_freq= action_clipped[3]*1.403+4.21
         
         top_cyl_offset = action_clipped[4]*333
         top_cyl_amp= action_clipped[5]*333
-        top_cyl_phase= action_clipped[6]*1.05
+        top_cyl_phase= action_clipped[6]*1.046
         top_cyl_freq= action_clipped[7]*1.403+4.21
         
         bot_cyl_offset = action_clipped[8]*333
         bot_cyl_amp= action_clipped[9]*333
-        bot_cyl_phase= action_clipped[10]*1.05
+        bot_cyl_phase= action_clipped[10]*1.046
         bot_cyl_freq= action_clipped[11]*1.403+4.21
         
-        if front_cyl_freq<=5:
+        if front_cyl_freq<=5.0:
             front_cyl_freq=0
-        if top_cyl_freq<=5:
+        if top_cyl_freq<=5.0:
             top_cyl_freq=0
-        if bot_cyl_freq<=5:
+        if bot_cyl_freq<=5.0:
             bot_cyl_freq=0
 
         if self.action_counter == 1:
@@ -636,6 +636,7 @@ class Iteration():
                 front_cyl_RPS_temp_mot[i] = front_cyl_offset+front_cyl_amp*np.sin(2*3.14*front_cyl_freq*(i-5)*self.mot_timestep+front_cyl_phase) 
                 top_cyl_RPS_temp_mot[i] = top_cyl_offset+top_cyl_amp*np.sin(2*3.14*top_cyl_freq*(i-5)*self.mot_timestep+top_cyl_phase)
                 bot_cyl_RPS_temp_mot[i] = bot_cyl_offset+bot_cyl_amp*np.sin(2*3.14*bot_cyl_freq*(i-5)*self.mot_timestep+bot_cyl_phase)
+                
                 if front_cyl_RPS_temp_mot[i]>1000:
                     front_cyl_RPS_temp_mot[i]=1000
                 if front_cyl_RPS_temp_mot[i]<-1000:
@@ -866,7 +867,7 @@ lamda = 0.10
 entropy_coef = 0.001
 epsilon = 0.35
 value_range = 0.9
-num_epochs = 15
+num_epochs = 13
 batch_size = 150
 actor_lr = 1e-4
 critic_lr = 1e-4
