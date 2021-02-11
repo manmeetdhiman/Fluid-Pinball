@@ -420,9 +420,9 @@ class Iteration():
         top_sens_var = 0.1635
         mid_sens_var = 0.1700
         bot_sens_var = 0.1481
-        top_sens_state = 6.25 * top_sens_var - 1.0625
-        mid_sens_state = 6.25 * mid_sens_var - 1.0625
-        bot_sens_state = 6.25 * bot_sens_var - 1.0625
+        top_sens_state = 5.0 * top_sens_var - 1.0
+        mid_sens_state = 5.0 * mid_sens_var - 1.0
+        bot_sens_state = 5.0 * bot_sens_var - 1.0
         
         front_mot_state_offset = 0.00
         front_mot_state_amp=0.00
@@ -496,9 +496,9 @@ class Iteration():
         mid_sens_var = np.var(self.mid_sens_values[-sampling_timesteps:])
         bot_sens_var = np.var(self.bot_sens_values[-sampling_timesteps:])
 
-        top_sens_state = 6.25 * top_sens_var - 1.0625
-        mid_sens_state = 6.25 * mid_sens_var - 1.0625
-        bot_sens_state = 6.25 * bot_sens_var - 1.0625
+        top_sens_state = 5.0 * top_sens_var - 1.0
+        mid_sens_state = 5.0 * mid_sens_var - 1.0
+        bot_sens_state = 5.0 * bot_sens_var - 1.0
 
         front_mot_state_offset = self.state_front_cyl_offset[-1]
         front_mot_state_amp= self.state_front_cyl_amp [-1]
