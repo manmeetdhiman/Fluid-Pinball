@@ -559,42 +559,42 @@ class Iteration():
         action_clipped=np.zeros(len(action))
         
         for i in range(len(action_clipped)):
-            if action[i]>1.75:
-                action_clipped[i]=1.75
-            elif action[i]<-1.75:
-                action_clipped[i]=-1.75
+            if action[i]>3.0:
+                action_clipped[i]=3.0
+            elif action[i]<-3.0:
+                action_clipped[i]=-3.0
             else:
                 action_clipped[i]=action[i]
         
-        self.state_front_cyl_offset.append(action_clipped[0]/1.75)
-        self.state_front_cyl_amp.append(action_clipped[1]/1.75)
-        self.state_front_cyl_phase.append(action_clipped[2]/1.75)
-        self.state_front_cyl_freq.append(action_clipped[3]/1.75)
+        self.state_front_cyl_offset.append(action_clipped[0]/3.0)
+        self.state_front_cyl_amp.append(action_clipped[1]/3.0)
+        self.state_front_cyl_phase.append(action_clipped[2]/3.0)
+        self.state_front_cyl_freq.append(action_clipped[3]/3.0)
         
-        self.state_top_cyl_offset.append(action_clipped[4]/1.75)
-        self.state_top_cyl_amp.append(action_clipped[5]/1.75)
-        self.state_top_cyl_phase.append(action_clipped[6]/1.75)
-        self.state_top_cyl_freq.append(action_clipped[7]/1.75)
+        self.state_top_cyl_offset.append(action_clipped[4]/3.0)
+        self.state_top_cyl_amp.append(action_clipped[5]/3.0)
+        self.state_top_cyl_phase.append(action_clipped[6]/3.0)
+        self.state_top_cyl_freq.append(action_clipped[7]/3.0)
         
-        self.state_bot_cyl_offset.append(action_clipped[8]/1.75)
-        self.state_bot_cyl_amp.append(action_clipped[9]/1.75)
-        self.state_bot_cyl_phase.append(action_clipped[10]/1.75)
-        self.state_bot_cyl_freq.append(action_clipped[11]/1.75)
+        self.state_bot_cyl_offset.append(action_clipped[8]/3.0)
+        self.state_bot_cyl_amp.append(action_clipped[9]/3.0)
+        self.state_bot_cyl_phase.append(action_clipped[10]/3.0)
+        self.state_bot_cyl_freq.append(action_clipped[11]/3.0)
 
-        front_cyl_offset = action_clipped[0]*590
-        front_cyl_amp= action_clipped[1]*590
-        front_cyl_phase= action_clipped[2]*1.794
-        front_cyl_freq= action_clipped[3]*2.406+4.21
+        front_cyl_offset = action_clipped[0]*333
+        front_cyl_amp= action_clipped[1]*333
+        front_cyl_phase= action_clipped[2]*1.05
+        front_cyl_freq= action_clipped[3]*1.403+4.21
         
-        top_cyl_offset = action_clipped[4]*590
-        top_cyl_amp= action_clipped[5]*590
-        top_cyl_phase= action_clipped[6]*1.794
-        top_cyl_freq= action_clipped[7]*2.406+4.21
+        top_cyl_offset = action_clipped[4]*333
+        top_cyl_amp= action_clipped[5]*333
+        top_cyl_phase= action_clipped[6]*1.05
+        top_cyl_freq= action_clipped[7]*1.403+4.21
         
-        bot_cyl_offset = action_clipped[8]*590
-        bot_cyl_amp= action_clipped[9]*590
-        bot_cyl_phase= action_clipped[10]*1.794
-        bot_cyl_freq= action_clipped[11]*2.406+4.21
+        bot_cyl_offset = action_clipped[8]*333
+        bot_cyl_amp= action_clipped[9]*333
+        bot_cyl_phase= action_clipped[10]*1.05
+        bot_cyl_freq= action_clipped[11]*1.403+4.21
         
         if front_cyl_freq<=5:
             front_cyl_freq=0
@@ -636,18 +636,18 @@ class Iteration():
                 front_cyl_RPS_temp_mot[i] = front_cyl_offset+front_cyl_amp*np.sin(2*3.14*front_cyl_freq*(i-5)*self.mot_timestep+front_cyl_phase) 
                 top_cyl_RPS_temp_mot[i] = top_cyl_offset+top_cyl_amp*np.sin(2*3.14*top_cyl_freq*(i-5)*self.mot_timestep+top_cyl_phase)
                 bot_cyl_RPS_temp_mot[i] = bot_cyl_offset+bot_cyl_amp*np.sin(2*3.14*bot_cyl_freq*(i-5)*self.mot_timestep+bot_cyl_phase)
-                if front_cyl_RPS_temp_mot[i]>1045:
-                    front_cyl_RPS_temp_mot[i]=1045
-                if front_cyl_RPS_temp_mot[i]<-1045:
-                    front_cyl_RPS_temp_mot[i]=-1045
-                if top_cyl_RPS_temp_mot[i]>1045:
-                    top_cyl_RPS_temp_mot[i]=1045
-                if top_cyl_RPS_temp_mot[i]<-1045:
-                    top_cyl_RPS_temp_mot[i]=-1045
-                if bot_cyl_RPS_temp_mot[i]>1045:
-                    bot_cyl_RPS_temp_mot[i]=1045
-                if bot_cyl_RPS_temp_mot[i]<-1045:
-                    bot_cyl_RPS_temp_mot[i]=-1045
+                if front_cyl_RPS_temp_mot[i]>1000:
+                    front_cyl_RPS_temp_mot[i]=1000
+                if front_cyl_RPS_temp_mot[i]<-1000:
+                    front_cyl_RPS_temp_mot[i]=-1000
+                if top_cyl_RPS_temp_mot[i]>1000:
+                    top_cyl_RPS_temp_mot[i]=1000
+                if top_cyl_RPS_temp_mot[i]<-1000:
+                    top_cyl_RPS_temp_mot[i]=-1000
+                if bot_cyl_RPS_temp_mot[i]>1000:
+                    bot_cyl_RPS_temp_mot[i]=1000
+                if bot_cyl_RPS_temp_mot[i]<-1000:
+                    bot_cyl_RPS_temp_mot[i]=-1000
 
         front_cyl_RPS_temp_mot = Spline(times, front_cyl_RPS_temp_mot, des_times)
         top_cyl_RPS_temp_mot = Spline(times, top_cyl_RPS_temp_mot, des_times)
