@@ -212,7 +212,6 @@ class PPO_Agent(object):
             actor_losses.append(actor_loss.item())
             critic_losses.append(critic_loss.item())
 
-        self.clear_memory()
         actor_loss = sum(actor_losses) / len(actor_losses)
         critic_loss = sum(critic_losses) / len(critic_losses)
         self.actor_losses.append(actor_loss)
@@ -867,7 +866,8 @@ lamda = 0.10
 entropy_coef = 0.001
 epsilon = 0.35
 value_range = 0.9
-num_epochs = 13
+num_updates=5
+num_epochs = 5
 batch_size = 150
 actor_lr = 1e-4
 critic_lr = 1e-4
@@ -958,15 +958,25 @@ def main():
             ppo_agent.values.extend(Iterations[iteration].values)
             ppo_agent.next_states.extend(Iterations[iteration].next_states)
 
-        next_state = ppo_agent.next_states[-1]
-        value = ppo_agent.critic.forward(torch.FloatTensor(next_state))
-        value = value.detach().numpy()
-        ppo_agent.values.append(value)
-        ppo_agent._update_weights(lr_manual_bool=lr_manual_bool, actor_lr=actor_lr, critic_lr=critic_lr)
-        ppo_agent._save_weights((policy + 1))
+        for update in range(num_updates):
+            ppo_agent.values=[]
+            for i in range(len(ppo_agent.states)):
+                value=ppo_agent.critic.forward(torch.FloatTensor(ppo_agent.states[i]))
+                value=value.detach().numpy()
+                ppo_agent.values.append(value)
+            next_state=ppo_agent.next_states[-1]
+            value=ppo_agent.critic.forward(torch.FloatTensor(next_state))
+            value=value.detach().numpy()
+            ppo_agent.values.append(value)
+            ppo_agent._update_weights(std_manual_bool,std_manual,clipped_value_loss,bootstrap_bool,bootstrap_num,
+                                      lr_manual_bool,actor_lr,critic_lr,normalize_adv)
+        ppo_agent.clear_memory()
         print('Weights Updated')
-        total_critic_losses.append(ppo_agent.critic_losses[-1])
-        total_actor_losses.append(ppo_agent.actor_losses[-1])
+        
+        critic_losses=ppo_agent.critic_losses[-num_updates:]
+        actor_losses=ppo_agent.actor_losses[-num_updates:]
+        total_critic_losses.append(critic_losses)
+        total_actor_losses.append(actor_losses)
         losses_dictionary = {'actor_losses': total_actor_losses, 'critic_losses': total_critic_losses}
         losses_filename = 'actor_critic_losses_' + str(policy + 1) + '.pickle'
         with open(losses_filename, 'wb') as handle:
