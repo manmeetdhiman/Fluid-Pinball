@@ -968,8 +968,8 @@ def main():
             value=ppo_agent.critic.forward(torch.FloatTensor(next_state))
             value=value.detach().numpy()
             ppo_agent.values.append(value)
-            ppo_agent._update_weights(std_manual_bool,std_manual,clipped_value_loss,bootstrap_bool,bootstrap_num,
-                                      lr_manual_bool,actor_lr,critic_lr,normalize_adv)
+            ppo_agent._update_weights(lr_manual_bool,actor_lr,critic_lr)
+            
         ppo_agent.clear_memory()
         print('Weights Updated')
         
