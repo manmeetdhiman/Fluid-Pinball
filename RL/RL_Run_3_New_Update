@@ -969,7 +969,8 @@ def main():
             value=value.detach().numpy()
             ppo_agent.values.append(value)
             ppo_agent._update_weights(lr_manual_bool,actor_lr,critic_lr)
-            
+        
+        ppo_agent._save_weights((policy + 1))
         ppo_agent.clear_memory()
         print('Weights Updated')
         
