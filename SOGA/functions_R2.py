@@ -106,7 +106,7 @@ def GA(starting_gen, target_cost, max_gen, size, mut_prob, mut_type, search_limi
             buffer_count += 1
             if buffer_count >= gen_buffer_limit:
                 message = exit_check(cost_fittest_s = cost_fittest_s,target_cost = target_cost,
-                                     sat_counter = sat_counter, buffer_count=buffer_count)
+                                     sat_counter = sat_counter, buffer_count = gen_buffer_limit)
                 if message == 'first_saturation':
                     print('first saturation')
                     mut_prob = 0.3
@@ -161,7 +161,7 @@ def GA(starting_gen, target_cost, max_gen, size, mut_prob, mut_type, search_limi
             buffer_count += 1
             if buffer_count >= gen_buffer_limit:
                 message = exit_check(cost_fittest_s=cost_fittest_s, target_cost=target_cost,
-                                     sat_counter=sat_counter, buffer_count=buffer_count)
+                                     sat_counter=sat_counter, buffer_count = gen_buffer_limit)
                 if message == 'first_saturation':
                     mut_prob = 0.3
                     mut_type = 'motor'
@@ -541,73 +541,104 @@ def tag(group,abs_counter):
         abs_counter += 1
     return group,abs_counter
 
-def parse_j(raw_data,type,key):
-    return_data = []
-    for gen in raw_data.keys():
-        parsed_data = []
-        for ind in raw_data[gen].keys():
-            parsed_data.append(raw_data[gen][ind][key])
-        if type == 'best':
-            return_data.append([min(parsed_data)])
-        if type == 'avg':
-            return_data.append([stats.mean(parsed_data)])
-        if type == 'worst':
-            return_data.append([max(parsed_data)])
-        if type == 'all':
-            return_data.append(parsed_data)
+def parse_ind(raw_data,type):
+    if type == 'best':
+        inds = []
+        for gen in raw_data.keys():
+            j_totals_gen = []
+            for ind in raw_data[gen].keys():
+                j_totals_gen.append(raw_data[gen][ind]['j_total'])
+            ind_ids = list(raw_data[gen].keys())
+            best_ind = ind_ids[j_totals_gen.index(min(j_totals_gen))]
+            inds.append(raw_data[gen][best_ind])
+        type_ind_id = ind_ids[-1]
+        return inds, type_ind_id
+    if type == 'worst':
+        inds = []
+        for gen in raw_data.keys():
+            j_totals_gen = []
+            for ind in raw_data[gen].keys():
+                j_totals_gen.append(raw_data[gen][ind]['j_total'])
+            ind_ids = list(raw_data[gen].keys())
+            best_ind = ind_ids[j_totals_gen.index(max(j_totals_gen))]
+            inds.append(raw_data[gen][best_ind])
+        type_ind_id = ind_ids[0]
+        return inds,type_ind_id
+
+
+def parse_j(raw_data,type):
+    return_data = {}
+    cost_keys = ['j_act','j_fluc','j_total']
+    #parsing all types of costs for all individuals in all generations
+    if type == 'all':
+        for key in cost_keys:
+            return_data[key] = []
+            for gen in raw_data.keys():
+                gen_cost = []
+                for ind in raw_data[gen].keys():
+                    gen_cost.append(raw_data[gen][ind][key])
+                return_data[key].append(gen_cost)
+    #parsing all cost types of best individuals in each generation
+    if type == 'best':
+        best_inds,type_ind_id = parse_ind(raw_data, type = type)
+        for key in cost_keys:
+            return_data[key] = []
+            for ind in best_inds:
+                best_j = []
+                best_j.append(ind[key])
+                return_data[key].append(best_j)
+    #parsing all cost types of worst individuals in each generation
+    if type == 'worst':
+        worst_inds,type_ind_id = parse_ind(raw_data, type = type)
+        for key in cost_keys:
+            return_data[key] = []
+            for ind in worst_inds:
+                worst_j = []
+                worst_j.append(ind[key])
+                return_data[key].append(worst_j)
     return return_data
 
-def plotter(type,data,total_gen,title='',xlabel='',label='',individual_id = None, gen = None):
+def plotter(type,raw_data,total_gen,title='',xlabel='',label='',individual_id = None, gen = None):
     if type == 'j_plot':
+        best_inds,best_ind_id = parse_ind(raw_data = raw_data, type = 'best')
         cost_keys = ['j_act', 'j_fluc', 'j_total']
-        js_all = {}
-        js_best = {}
-        j = {}
-        for key in cost_keys:
-            j_all = parse_j(raw_data=data, type='all', key=key)
-            j_best = parse_j(raw_data=data, type='best', key=key)
-            js_all[key] = j_all
-            js_best[key] = j_best
+        j_all = parse_j(raw_data = raw_data, type='all')
+        j_best = parse_j(raw_data = raw_data, type='best')
+        j = [j_all,j_best]
 
-        best_individuals = list(data[total_gen].keys())
-        best_individual_index = js_all['j_total'][-1].index(min(js_all['j_total'][-1]))
-        best_individual_ID = best_individuals[best_individual_index]
-        best_j_total = round(js_best['j_total'][-1][0],3)
-        j['js_all'] = js_all
-        j['js_best'] = js_best
-
-        for cost in j.keys():
-            data = j[cost]
+        for j_type in j:
             n_plots = 3
             fig, axs = plt.subplots(n_plots, 1, sharex=True)
             i = 0
-            for key in data.keys():
-                for gen in range(0, total_gen+1):
-                    axs[i].scatter([gen]*len(data[key][gen]), data[key][gen],color = 'green',label = label)
+            for key in cost_keys:
+                gen = 0
+                for gen_data in j_type[key]:
+                    axs[i].scatter([gen]*len(gen_data), gen_data,color = 'green',label = label)
                     axs[i].set(ylabel = key)
                     plt.xticks(np.arange(0,total_gen+1,step = 1))
-
+                    gen+=1
                 i+=1
             plt.xlabel(xlabel)
-            fig.suptitle(title + f' Best Individual is {best_individual_ID} with j_total of {best_j_total}')
+            best_j_total = best_inds[-1]['j_total']
+            fig.suptitle(title + f' Best Individual is {best_ind_id} with j_total of {round(best_j_total,3)}')
             plt.show()
     if type == 'individual':
         sensor_data = []
         sensor_keys = []
         motor_keys = ['front','top','bottom']
-        revolutions = data[gen][individual_id]['revolutions']
+        revolutions = raw_data[gen][individual_id]['revolutions']
         for i in range(3):
             revolutions[i] = [rev * 9.5493 for rev in revolutions[i]]
 
-        for key in data[gen][individual_id]['sensor'].keys():
-            sensor_data.append(list(data[gen][individual_id]['sensor'][key].values()))
+        for key in raw_data[gen][individual_id]['sensor'].keys():
+            sensor_data.append(list(raw_data[gen][individual_id]['sensor'][key].values()))
             sensor_keys.append(key)
         fig, axs = plt.subplots(4, 1,sharex=True)
         for i in range(3):
             axs[0].plot(list(range(len(revolutions[0]))),revolutions[i],label = motor_keys[i])
             axs[0].set(ylabel = 'Motor RPMs',ylim = ((-10000,10000)),xlim = ((0,2000)))
             axs[0].legend()
-            axs[i+1].plot(list(data[gen][individual_id]['sensor']['top'].keys()),sensor_data[i])
+            axs[i+1].plot(list(raw_data[gen][individual_id]['sensor']['top'].keys()),sensor_data[i])
             axs[i+1].set(ylabel = sensor_keys[i],ylim = ((0,5)),xlim = ((0,2000)))
         fig.suptitle(title + f', Individual {individual_id} in Generation {gen}')
         plt.xlabel(xlabel)
@@ -618,6 +649,7 @@ def exit_check(cost_fittest_s,target_cost,sat_counter, buffer_count):
     for i in range(1,buffer_count):
         p_diff = abs((cost_fittest_s[-1] - cost_fittest_s[-1-i])/((cost_fittest_s[-1] + cost_fittest_s[-1-i])/2))*100
         p_diffs.append(p_diff)
+    print(p_diffs)
     if max(p_diffs) <= 0.5:
         if sat_counter == 0:
             return 'first_saturation'
