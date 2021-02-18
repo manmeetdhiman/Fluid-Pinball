@@ -453,12 +453,12 @@ def stats(target_cost,max_gen,size,mut_prob,gen,minimization,percent_improvement
 #saturation limiter for genes
 def sat_lim(gene,key):
     if key == 'frequency':
-        print(f'frequency unlimited:{gene}')
+        print(f'frequency BEFORE:{gene}')
         if gene > u_bound[key]:
             gene = u_bound[key]
         elif gene < l_bound[key]:
             gene = 0
-        print(f'frequency limited:{gene}')
+        print(f'frequency AFTER:{gene}')
     else:
         if gene > u_bound[key]:
             gene = u_bound[key]
