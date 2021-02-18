@@ -22,8 +22,8 @@ freq_l_lim = 31.4159265 #rad/s
 
 #rastrigin parameters
 bound_ras = 5.12
-mockfreq_u = 5.12
-mockfreq_l = mockfreq_u / 2
+mockfreq_u = freq_u_lim
+mockfreq_l = freq_l_lim
 
 #gene limits:
 if GA_type == 'Rastrigin':
@@ -452,15 +452,18 @@ def stats(target_cost,max_gen,size,mut_prob,gen,minimization,percent_improvement
     plt.show()
 #saturation limiter for genes
 def sat_lim(gene,key):
-    if gene > u_bound[key]:
-        gene = u_bound[key]
-    if gene < l_bound[key]:
-        gene = l_bound[key]
     if key == 'frequency':
+        print(f'frequency unlimited:{gene}')
         if gene > u_bound[key]:
             gene = u_bound[key]
-        if gene < l_bound[key]:
+        elif gene < l_bound[key]:
             gene = 0
+        print(f'frequency limited:{gene}')
+    else:
+        if gene > u_bound[key]:
+            gene = u_bound[key]
+        elif gene < l_bound[key]:
+            gene = l_bound[key]
     return gene
 
 #saving population data to a file
@@ -544,26 +547,28 @@ def tag(group,abs_counter):
 def parse_ind(raw_data,type):
     if type == 'best':
         inds = []
+        best_ind_ids = []
         for gen in raw_data.keys():
             j_totals_gen = []
             for ind in raw_data[gen].keys():
                 j_totals_gen.append(raw_data[gen][ind]['j_total'])
             ind_ids = list(raw_data[gen].keys())
             best_ind = ind_ids[j_totals_gen.index(min(j_totals_gen))]
+            best_ind_ids.append(best_ind)
             inds.append(raw_data[gen][best_ind])
-        type_ind_id = ind_ids[-1]
-        return inds, type_ind_id
+        return inds, best_ind_ids
     if type == 'worst':
         inds = []
+        worst_ind_ids = []
         for gen in raw_data.keys():
             j_totals_gen = []
             for ind in raw_data[gen].keys():
                 j_totals_gen.append(raw_data[gen][ind]['j_total'])
             ind_ids = list(raw_data[gen].keys())
-            best_ind = ind_ids[j_totals_gen.index(max(j_totals_gen))]
-            inds.append(raw_data[gen][best_ind])
-        type_ind_id = ind_ids[0]
-        return inds,type_ind_id
+            worst_ind = ind_ids[j_totals_gen.index(max(j_totals_gen))]
+            worst_ind_ids.append(worst_ind)
+            inds.append(raw_data[gen][worst_ind])
+        return inds,worst_ind_ids
 
 
 def parse_j(raw_data,type):
@@ -580,7 +585,7 @@ def parse_j(raw_data,type):
                 return_data[key].append(gen_cost)
     #parsing all cost types of best individuals in each generation
     if type == 'best':
-        best_inds,type_ind_id = parse_ind(raw_data, type = type)
+        best_inds,best_ind_ids = parse_ind(raw_data, type = type)
         for key in cost_keys:
             return_data[key] = []
             for ind in best_inds:
@@ -589,7 +594,7 @@ def parse_j(raw_data,type):
                 return_data[key].append(best_j)
     #parsing all cost types of worst individuals in each generation
     if type == 'worst':
-        worst_inds,type_ind_id = parse_ind(raw_data, type = type)
+        worst_inds,worst_ind_ids = parse_ind(raw_data, type = type)
         for key in cost_keys:
             return_data[key] = []
             for ind in worst_inds:
@@ -600,7 +605,7 @@ def parse_j(raw_data,type):
 
 def plotter(type,raw_data,total_gen,title='',xlabel='',label='',individual_id = None, gen = None):
     if type == 'j_plot':
-        best_inds,best_ind_id = parse_ind(raw_data = raw_data, type = 'best')
+        best_inds,best_ind_ids = parse_ind(raw_data = raw_data, type = 'best')
         cost_keys = ['j_act', 'j_fluc', 'j_total']
         j_all = parse_j(raw_data = raw_data, type='all')
         j_best = parse_j(raw_data = raw_data, type='best')
@@ -620,7 +625,7 @@ def plotter(type,raw_data,total_gen,title='',xlabel='',label='',individual_id = 
                 i+=1
             plt.xlabel(xlabel)
             best_j_total = best_inds[-1]['j_total']
-            fig.suptitle(title + f' Best Individual is {best_ind_id} with j_total of {round(best_j_total,3)}')
+            fig.suptitle(title + f' Best Individual is {best_ind_ids[-1]} with j_total of {round(best_j_total,3)}')
             plt.show()
     if type == 'individual':
         sensor_data = []
@@ -661,6 +666,9 @@ def exit_check(cost_fittest_s,target_cost,sat_counter, buffer_count):
         return 'exit'
     return 'no action'
 
+def writeout(url,list):
+    with open(url,'w') as f:
+        documents = yaml.dump(list, f)
 
 
 
