@@ -447,8 +447,8 @@ class Iteration():
 
     # The reward is calculated here using the J_fluc and J_act
     def calculate_reward(self):
-        if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing):
-            sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing)
+        if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing * 1.66666):
+            sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing * 1.66666)
         else:
             sampling_timesteps = int(len(self.top_sens_values))
 
@@ -478,7 +478,7 @@ class Iteration():
 
         J_tot = J_fluc + act_gamma * J_act
 
-        J_tot_max = 0.200
+        J_tot_max = 0.215
 
         reward = -1 * J_tot / J_tot_max
         reward = np.array([reward])
@@ -499,6 +499,13 @@ class Iteration():
         top_sens_state = 5.0 * top_sens_var - 1.0
         mid_sens_state = 5.0 * mid_sens_var - 1.0
         bot_sens_state = 5.0 * bot_sens_var - 1.0
+        
+        if top_sens_state >= 2.0:
+            top_sens_state=2.0
+        if mid_sens_state >= 2.0:
+            mid_sens_state=2.0
+        if bot_sens_state >= 2.0:
+            bot_sens_state=2.0
 
         front_mot_state_offset = self.state_front_cyl_offset[-1]
         front_mot_state_amp = self.state_front_cyl_amp[-1]
