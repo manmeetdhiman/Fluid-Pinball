@@ -478,7 +478,7 @@ class Iteration():
 
         J_tot = J_fluc + act_gamma * J_act
 
-        J_tot_max = 0.215
+        J_tot_max = 0.200
 
         reward = -1 * J_tot / J_tot_max
         reward = np.array([reward])
