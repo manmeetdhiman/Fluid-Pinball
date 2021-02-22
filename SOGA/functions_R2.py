@@ -9,8 +9,8 @@ from matplotlib import pyplot as plt
 import yaml
 from pprint import pprint
 from individual import sim_type
-
 #import CFD.cfd
+
 GA_type = sim_type
 offset = 0.0000000000000001 #for random.uniform()
 
@@ -18,12 +18,12 @@ offset = 0.0000000000000001 #for random.uniform()
 omega_lim = 1048 #rad/s
 phase_lim = math.pi #rad
 freq_u_lim = 52.9044 #rad/s or 8.42 Hz
-freq_l_lim = 27.2690 #rad/s or 4.34 Hz
+freq_l_lim = 31.4159265 #rad/s
 
 #rastrigin parameters
 bound_ras = 5.12
-mockfreq_u = 5.12
-mockfreq_l = mockfreq_u / 2
+mockfreq_u = freq_u_lim
+mockfreq_l = freq_l_lim
 
 #gene limits:
 if GA_type == 'Rastrigin':
@@ -87,8 +87,13 @@ def GA(starting_gen, target_cost, max_gen, size, mut_prob, mut_type, search_limi
             population,abs_counter = tag(group = population,abs_counter = abs_counter)
             population = response(population = population, dt = dt, tsteps = tsteps)
             population = cost_calc(gen = starting_gen, population = population)
+            output_population(population=population, gen=starting_gen)
+            output_saturation_parameters(gen=starting_gen, buffer_count=buffer_count,
+                                         sat_counter=sat_counter)
         else:
-            population = load_population_from_file(starting_gen)
+            population = load_population(starting_gen)
+            buffer_count, sat_counter = load_saturation_parameters(starting_gen)
+            cost_fittest_s = load_cost_fittest()
 
         for gen in range(starting_gen+1,max_gen+1):
             population_data[gen] = population
@@ -100,13 +105,16 @@ def GA(starting_gen, target_cost, max_gen, size, mut_prob, mut_type, search_limi
 
             buffer_count += 1
             if buffer_count >= gen_buffer_limit:
-                message = exit_check(cost_fittest_s = cost_fittest_s,target_cost = target_cost,sat_counter = sat_counter)
-                if message == 'first  saturation':
+                message = exit_check(cost_fittest_s = cost_fittest_s,target_cost = target_cost,
+                                     sat_counter = sat_counter, buffer_count = gen_buffer_limit)
+                if message == 'first_saturation':
+                    print('first saturation')
                     mut_prob = 0.3
                     mut_type = 'motor'
                     sat_counter += 1
                     buffer_count = 0
-                if message == 'second saturation':
+                if message == 'second_saturation':
+                    print('second saturation')
                     mut_prob = 1
                     mut_type = 'gene'
                     sat_counter += 1
@@ -127,7 +135,10 @@ def GA(starting_gen, target_cost, max_gen, size, mut_prob, mut_type, search_limi
 
             parents.extend(children)
             population = parents
-            output_population_to_file(population = population, gen = gen)
+            output_population(population = population, gen = gen)
+            output_saturation_parameters(gen=gen, buffer_count=buffer_count,
+                                         sat_counter=sat_counter)
+            output_cost_fittest(cost_fittest_s)
 
         # return parameters
         minimization = fittest[0].j_total - fittest[-1].j_total
@@ -149,7 +160,8 @@ def GA(starting_gen, target_cost, max_gen, size, mut_prob, mut_type, search_limi
 
             buffer_count += 1
             if buffer_count >= gen_buffer_limit:
-                message = exit_check(cost_fittest_s=cost_fittest_s, target_cost=target_cost, sat_counter=sat_counter)
+                message = exit_check(cost_fittest_s=cost_fittest_s, target_cost=target_cost,
+                                     sat_counter=sat_counter, buffer_count = gen_buffer_limit)
                 if message == 'first_saturation':
                     mut_prob = 0.3
                     mut_type = 'motor'
@@ -198,12 +210,13 @@ def genes(population):
 
 #cost assignment function, CFD Called here
 def cost_calc(gen, population):
-    cost = CFD.cfd.run_CFD(gen, population, submit_slurm=True, GA_to_CFD=True, compute_motor_rotation=False)
+    data = CFD.cfd.GA_run_CFD(gen, population)
     for i in range(len(population)):
         individual_id = population[i].id
-        population[i].j_act = cost[individual_id]['Jact']
-        population[i].j_fluc = cost[individual_id]['Jfluc']
-        population[i].j_total = cost[individual_id]['Jtotal']
+        population[i].j_act = data[individual_id]['Jact']
+        population[i].j_fluc = data[individual_id]['Jfluc']
+        population[i].j_total = data[individual_id]['Jtotal']
+        population[i].sensor = data[individual_id]['sensor_data']
     return population
 
 #Fitness
@@ -439,19 +452,22 @@ def stats(target_cost,max_gen,size,mut_prob,gen,minimization,percent_improvement
     plt.show()
 #saturation limiter for genes
 def sat_lim(gene,key):
-    if gene > u_bound[key]:
-        gene = u_bound[key]
-    if gene < l_bound[key]:
-        gene = l_bound[key]
     if key == 'frequency':
+        print(f'frequency BEFORE:{gene}')
         if gene > u_bound[key]:
             gene = u_bound[key]
-        if gene < l_bound[key]:
+        elif gene < l_bound[key]:
             gene = 0
+        print(f'frequency AFTER:{gene}')
+    else:
+        if gene > u_bound[key]:
+            gene = u_bound[key]
+        elif gene < l_bound[key]:
+            gene = l_bound[key]
     return gene
 
 #saving population data to a file
-def output_population_to_file(population, gen):
+def output_population(population, gen):
     print(f'Outputting population {gen} to file')
 
     output = {}
@@ -461,6 +477,7 @@ def output_population_to_file(population, gen):
         output[individual.id]['j_fluc'] = individual.j_fluc
         output[individual.id]['j_act'] = individual.j_act
         output[individual.id]['j_total'] = individual.j_total
+        output[individual.id]['sensor'] = individual.sensor
         temp_rev_list = [sublist.tolist() for sublist in individual.revolutions]
         output[individual.id]['revolutions'] = temp_rev_list
 
@@ -468,7 +485,7 @@ def output_population_to_file(population, gen):
          yaml.dump(output, f)
 
 #loading population data from file
-def load_population_from_file(gen):
+def load_population(gen):
     with open(f'population-gen-{gen}.yaml', 'r') as f:
         reload = yaml.safe_load(f)
     reload_population = []
@@ -479,11 +496,46 @@ def load_population_from_file(gen):
         ind.j_fluc = reload[individual_id]['j_fluc']
         ind.j_act = reload[individual_id]['j_act']
         ind.j_total = reload[individual_id]['j_total']
+        ind.sensor = reload[individual_id]['sensor']
         ind.revolutions = reload[individual_id]['revolutions']
+        # Needs to be np array not just regular list.
+        ind.revolutions[0] = np.asarray(ind.revolutions[0])
+        ind.revolutions[1] = np.asarray(ind.revolutions[1])
+        ind.revolutions[2] = np.asarray(ind.revolutions[2])
 
         reload_population.append(ind)
 
     return reload_population
+
+
+def output_saturation_parameters(gen, buffer_count, sat_counter):
+    output = {}
+    output['buffer_count'] = buffer_count
+    output['sat_counter'] = sat_counter
+    with open(f'saturation_parameters-{gen}.yaml', 'w') as f:
+         yaml.dump(output, f)
+
+
+def load_saturation_parameters(gen):
+    with open(f'saturation_parameters-{gen}.yaml', 'r') as f:
+        reload = yaml.safe_load(f)
+
+    buffer_count = reload['buffer_count']
+    sat_counter = reload['sat_counter']
+
+    return buffer_count, sat_counter
+
+
+def output_cost_fittest(cost_fittest):
+    with open(f'cost_fittest.yaml', 'w') as f:
+        yaml.dump(cost_fittest, f)
+
+
+def load_cost_fittest():
+    with open(f'cost_fittest.yaml', 'r') as f:
+        cost_fittest = yaml.safe_load(f)
+
+    return cost_fittest
 
 
 def tag(group,abs_counter):
@@ -492,41 +544,118 @@ def tag(group,abs_counter):
         abs_counter += 1
     return group,abs_counter
 
-def parse_j(raw_data,type,key):
-    return_data = []
-    for gen in raw_data.keys():
-        parsed_data = []
-        for ind in raw_data[gen].keys():
-            parsed_data.append(raw_data[gen][ind][key])
-        if type == 'best':
-            return_data.append(min(parsed_data))
-        if type == 'avg':
-            return_data.append(stats.mean(parsed_data))
-        if type == 'worst':
-            return_data.append(max(parsed_data))
-        if type == 'all':
-            return_data.append(parsed_data)
+def parse_ind(raw_data,type):
+    if type == 'best':
+        inds = []
+        best_ind_ids = []
+        for gen in raw_data.keys():
+            j_totals_gen = []
+            for ind in raw_data[gen].keys():
+                j_totals_gen.append(raw_data[gen][ind]['j_total'])
+            ind_ids = list(raw_data[gen].keys())
+            best_ind = ind_ids[j_totals_gen.index(min(j_totals_gen))]
+            best_ind_ids.append(best_ind)
+            inds.append(raw_data[gen][best_ind])
+        return inds, best_ind_ids
+    if type == 'worst':
+        inds = []
+        worst_ind_ids = []
+        for gen in raw_data.keys():
+            j_totals_gen = []
+            for ind in raw_data[gen].keys():
+                j_totals_gen.append(raw_data[gen][ind]['j_total'])
+            ind_ids = list(raw_data[gen].keys())
+            worst_ind = ind_ids[j_totals_gen.index(max(j_totals_gen))]
+            worst_ind_ids.append(worst_ind)
+            inds.append(raw_data[gen][worst_ind])
+        return inds,worst_ind_ids
+
+
+def parse_j(raw_data,type):
+    return_data = {}
+    cost_keys = ['j_act','j_fluc','j_total']
+    #parsing all types of costs for all individuals in all generations
+    if type == 'all':
+        for key in cost_keys:
+            return_data[key] = []
+            for gen in raw_data.keys():
+                gen_cost = []
+                for ind in raw_data[gen].keys():
+                    gen_cost.append(raw_data[gen][ind][key])
+                return_data[key].append(gen_cost)
+    #parsing all cost types of best individuals in each generation
+    if type == 'best':
+        best_inds,best_ind_ids = parse_ind(raw_data, type = type)
+        for key in cost_keys:
+            return_data[key] = []
+            for ind in best_inds:
+                best_j = []
+                best_j.append(ind[key])
+                return_data[key].append(best_j)
+    #parsing all cost types of worst individuals in each generation
+    if type == 'worst':
+        worst_inds,worst_ind_ids = parse_ind(raw_data, type = type)
+        for key in cost_keys:
+            return_data[key] = []
+            for ind in worst_inds:
+                worst_j = []
+                worst_j.append(ind[key])
+                return_data[key].append(worst_j)
     return return_data
 
-def plotter(type,x,y,title,xlabel,ylabel,label,legend,total_gen):
-    if type == 'scatter':
-        plt.plot(x,y,label = label)
-    if type == 'line':
-        plt.scatter(x,y,label = label)
-    if type == 'spread':
-        for gen in range(0, total_gen):
-            plt.scatter([gen + 1]*len(y[gen]), y[gen],color = 'green',label = label)
+def plotter(type,raw_data,total_gen,title='',xlabel='',label='',individual_id = None, gen = None):
+    if type == 'j_plot':
+        best_inds,best_ind_ids = parse_ind(raw_data = raw_data, type = 'best')
+        cost_keys = ['j_act', 'j_fluc', 'j_total']
+        j_all = parse_j(raw_data = raw_data, type='all')
+        j_best = parse_j(raw_data = raw_data, type='best')
+        j = [j_all,j_best]
 
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.xticks(np.arange(1,total_gen+1,step = 1))
-    if legend == True:
-        plt.legend([label])
-    plt.show()
+        for j_type in j:
+            n_plots = 3
+            fig, axs = plt.subplots(n_plots, 1, sharex=True)
+            i = 0
+            for key in cost_keys:
+                gen = 0
+                for gen_data in j_type[key]:
+                    axs[i].scatter([gen]*len(gen_data), gen_data,color = 'green',label = label)
+                    axs[i].set(ylabel = key)
+                    plt.xticks(np.arange(0,total_gen+1,step = 1))
+                    gen+=1
+                i+=1
+            plt.xlabel(xlabel)
+            best_j_total = best_inds[-1]['j_total']
+            fig.suptitle(title + f' Best Individual is {best_ind_ids[-1]} with j_total of {round(best_j_total,3)}')
+            plt.show()
+    if type == 'individual':
+        sensor_data = []
+        sensor_keys = []
+        motor_keys = ['front','top','bottom']
+        revolutions = raw_data[gen][individual_id]['revolutions']
+        for i in range(3):
+            revolutions[i] = [rev * 9.5493 for rev in revolutions[i]]
 
-def exit_check(cost_fittest_s,target_cost,sat_counter):
-    if cost_fittest_s[-1] == cost_fittest_s[-2] and cost_fittest_s[-1] == cost_fittest_s[-3]:
+        for key in raw_data[gen][individual_id]['sensor'].keys():
+            sensor_data.append(list(raw_data[gen][individual_id]['sensor'][key].values()))
+            sensor_keys.append(key)
+        fig, axs = plt.subplots(4, 1,sharex=True)
+        for i in range(3):
+            axs[0].plot(list(range(len(revolutions[0]))),revolutions[i],label = motor_keys[i])
+            axs[0].set(ylabel = 'Motor RPMs',ylim = ((-10000,10000)),xlim = ((0,2000)))
+            axs[0].legend()
+            axs[i+1].plot(list(raw_data[gen][individual_id]['sensor']['top'].keys()),sensor_data[i])
+            axs[i+1].set(ylabel = sensor_keys[i],ylim = ((0,5)),xlim = ((0,2000)))
+        fig.suptitle(title + f', Individual {individual_id} in Generation {gen}')
+        plt.xlabel(xlabel)
+        plt.show()
+
+def exit_check(cost_fittest_s,target_cost,sat_counter, buffer_count):
+    p_diffs = []
+    for i in range(1,buffer_count):
+        p_diff = abs((cost_fittest_s[-1] - cost_fittest_s[-1-i])/((cost_fittest_s[-1] + cost_fittest_s[-1-i])/2))*100
+        p_diffs.append(p_diff)
+    print(p_diffs)
+    if max(p_diffs) <= 0.5:
         if sat_counter == 0:
             return 'first_saturation'
         if sat_counter == 1:
@@ -537,6 +666,9 @@ def exit_check(cost_fittest_s,target_cost,sat_counter):
         return 'exit'
     return 'no action'
 
+def writeout(url,list):
+    with open(url,'w') as f:
+        documents = yaml.dump(list, f)
 
 
 
