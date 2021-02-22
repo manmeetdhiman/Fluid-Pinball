@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import json
 
 num_iterations=10
-num_policies=4
+num_policies=13
 CFD_timestep=5e-4
 CFD_timestep_spacing=5
 num_actions=15
@@ -27,7 +27,7 @@ master_data=[]
 for policy in range(num_policies):
     for iteration in range(num_iterations):
         iteration_ID=policy*num_iterations+iteration+1
-        filename='pickle_files/data_iteration_' + str(iteration_ID)+'.pickle'
+        filename='../../Production Runs/Production Run 2/pickle_files/data_iteration_' + str(iteration_ID)+'.pickle'
         with open(filename, 'rb') as handle:
             data = pickle.load(handle)
         master_data.append(data)
@@ -127,16 +127,16 @@ def calculate_episode_var_mean(sens_data, CFD_timesteps_period, CFD_timesteps_ac
     return episode_var, episode_mean
 
 def plot_regular(y_data,x_label,y_label):
-    x_data = np.arange(1,41,1)
+    x_data = np.arange(1,131,1)
     plt.figure(figsize=(15,7.5))
     plt.xticks(fontsize=15)
     plt.yticks(fontsize=15)
-    # m, b = np.polyfit(x_data, y_data, 1)
+    m, b = np.polyfit(x_data, y_data, 1)
     plt.plot(x_data, y_data)
-    # plt.plot(x_data, m * x_data + b)
+    plt.plot(x_data, m * x_data + b)
     plt.xlabel(x_label, fontsize=15)
     plt.ylabel(y_label, fontsize=15)
-    # print(m,b)
+    print(m,b)
 
 
 def plot_policy_regular(y_data,x_label,y_label,num_iterations):
@@ -317,37 +317,37 @@ avg_J_tots = np.array(avg_J_flucs) + gamma_act * np.array(avg_J_acts)
 # PERFORMANCE CHECKS
 
 
-#plot_regular(total_rewards,'Episode Number','Total Episode Rewards')
+plot_regular(total_rewards,'Episode Number','Total Episode Rewards')
 plot_regular(avg_rewards,'Episode Number','Average Episode Rewards')
 
-#plot_regular(total_J_flucs,'Episode Number','Total J_Flucs')
+plot_regular(total_J_flucs,'Episode Number','Total J_Flucs')
 plot_regular(avg_J_flucs,'Episode Number','Average J_Flucs')
 
-#plot_regular(total_J_acts,'Episode Number','Total J_Acts')
+plot_regular(total_J_acts,'Episode Number','Total J_Acts')
 plot_regular(avg_J_acts,'Epsiode Number','Average J_Acts')
 
-#plot_regular(total_J_tots,'Episode Number','Total J_Total')
-plot_regular(avg_J_tots,'Episode Number','Average J_Total')
+# plot_regular(total_J_tots,'Episode Number','Total J_Total')
+# plot_regular(avg_J_tots,'Episode Number','Average J_Total')
 
-#plot_policy_regular(total_rewards,'Policy Number','Total Episode Rewards',num_iterations)
-#plot_policy_regular(total_J_flucs,'Policy Number','Total J_Flucs',num_iterations)
-#plot_policy_regular(total_J_acts,'Policy Number','Total J_Acts',num_iterations)
-#plot_policy_regular(total_J_tots,'Policy Number','Total J_Total',num_iterations)
+plot_policy_regular(total_rewards,'Policy Number','Total Episode Rewards',num_iterations)
+plot_policy_regular(total_J_flucs,'Policy Number','Total J_Flucs',num_iterations)
+plot_policy_regular(total_J_acts,'Policy Number','Total J_Acts',num_iterations)
+# plot_policy_regular(total_J_tots,'Policy Number','Total J_Total',num_iterations)
 
 plot_policy_regular(avg_rewards,'Policy Number','Average Episode Rewards',num_iterations)
 plot_policy_regular(avg_J_flucs,'Policy Number','Average J_Flucs',num_iterations)
 plot_policy_regular(avg_J_acts,'Policy Number','Average J_Acts',num_iterations)
-plot_policy_regular(avg_J_tots,'Policy Number','Average J_Total',num_iterations)
+# plot_policy_regular(avg_J_tots,'Policy Number','Average J_Total',num_iterations)
 
-#plot_policy_average(total_rewards,'Policy Number','Policy Total Rewards',num_iterations)
-#plot_policy_average(total_J_flucs,'Policy Number','Policy Total J_Flucs',num_iterations)
-#plot_policy_average(total_J_acts,'Policy Number','Policy Total J_Acts',num_iterations)
-#plot_policy_average(total_J_tots,'Policy Number','Policy Total J_Tots',num_iterations)
+plot_policy_average(total_rewards,'Policy Number','Policy Total Rewards',num_iterations)
+plot_policy_average(total_J_flucs,'Policy Number','Policy Total J_Flucs',num_iterations)
+plot_policy_average(total_J_acts,'Policy Number','Policy Total J_Acts',num_iterations)
+# plot_policy_average(total_J_tots,'Policy Number','Policy Total J_Tots',num_iterations)
 
 plot_policy_average(avg_rewards,'Policy Number','Policy Average Rewards',num_iterations)
 plot_policy_average(avg_J_flucs,'Policy Number','Policy Average J_Flucs',num_iterations)
 plot_policy_average(avg_J_acts,'Policy Number','Policy Average J_Acts',num_iterations)
-plot_policy_average(avg_J_tots,'Policy Number','Policy Average J_Tots',num_iterations)
+# plot_policy_average(avg_J_tots,'Policy Number','Policy Average J_Tots',num_iterations)
 
 #RL CONVERGENCE CHECKS
 
@@ -442,7 +442,7 @@ if Json_files==True:
         json_dict['average_reward'] = avg_rewards[i]
 
         iteration = master_data[i]['iteration_ID']
-        filename = 'json_files/data_iteration_' + str(iteration) + '.json'
+        filename = '../../Production Runs/Production Run 2/json_files/data_iteration_' + str(iteration) + '.json'
         with open(filename, 'w') as outfile:
             json.dump(json_dict, outfile)
 
