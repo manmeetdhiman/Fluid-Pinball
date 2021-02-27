@@ -447,8 +447,8 @@ class Iteration():
 
     # The reward is calculated here using the J_fluc and J_act
     def calculate_reward(self):
-        if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing * 1.66666):
-            sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing * 1.66666)
+        if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing ):
+            sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing)
         else:
             sampling_timesteps = int(len(self.top_sens_values))
 
@@ -474,7 +474,7 @@ class Iteration():
         J_act = np.sqrt(J_act / (3 * sampling_timesteps))
         J_act = J_act / self.free_stream_vel * 0.01
 
-        act_gamma = 0.009
+        act_gamma = 0.02
 
         J_tot = J_fluc + act_gamma * J_act
 
