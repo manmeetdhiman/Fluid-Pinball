@@ -759,6 +759,8 @@ class Iteration():
             self.is_terminals.append(is_terminal)
 
             self.time_step_start = time_step_end + 1
+            
+            self.save_action()
 
     def run_action(self):
         self.action_counter += 1
@@ -824,6 +826,8 @@ class Iteration():
         self.is_terminals.append(is_terminal)
 
         self.time_step_start = time_step_end + 1
+        
+        self.save_action()
 
     def update_action(self, action, value, dist, mu, std):
         self.action = action
@@ -844,6 +848,21 @@ class Iteration():
                              'bot_sens_values': self.bot_sens_values}
 
         filename = 'data_iteration_' + str(self.iteration_ID) + '.pickle'
+        with open(filename, 'wb') as handle:
+            pickle.dump(iteration_results, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            
+    # This function saves the data after each action for the SS run. This will be helpful in case the run needs to restart midway.         
+    def save_action(self):
+        iteration_results = {'iteration_ID': self.iteration_ID, 'states': self.states, 'actions': self.actions,
+                             'rewards': self.rewards, 'mus': self.mus, 'stds': self.stds, 'values': self.values,
+                             'is_terminals': self.is_terminals, 'log_probs': self.log_probs,
+                             'front_cyl_RPS': self.front_cyl_RPS, 'top_cyl_RPS': self.top_cyl_RPS,
+                             'bot_cyl_RPS': self.bot_cyl_RPS, 'front_cyl_RPS_PI': self.front_cyl_RPS_PI,
+                             'top_cyl_RPS_PI': self.top_cyl_RPS_PI, 'bot_cyl_RPS_PI': self.bot_cyl_RPS_PI,
+                             'top_sens_values': self.top_sens_values, 'mid_sens_values': self.mid_sens_values,
+                             'bot_sens_values': self.bot_sens_values}
+
+        filename = 'data_action_' + str(self.action_counter) + '.pickle'
         with open(filename, 'wb') as handle:
             pickle.dump(iteration_results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -907,7 +926,7 @@ dur_ramps = 0.05
 
 # Change num_actions so that the total episode length is till SS. The total duration of the iteration will be:
 # dur_action_one+num_actions*dur_actions (units: shedding periods) 
-num_actions = 15
+num_actions = 42
 num_policies = 40
 # Only a single iteration is used for SS run 
 num_iterations = 1
