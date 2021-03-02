@@ -1,7 +1,7 @@
 #GA runs here
 #imports
-from functions import GA
-from functions import stats
+from functions_R2 import GA
+from functions_R2 import stats
 import individual as config
 
 
@@ -18,8 +18,7 @@ gen_s, fittest, cost_fittest_s, minimization, percent_improvement, bov, populati
     dt = config.dt,
     tsteps = config.tsteps,
     n_genes = config.n_genes,
-    abs_counter = 0,
-    gen_buffer_limit = config.gen_buffer_limit
+    abs_counter = config.abs_counter
     )
 
 
