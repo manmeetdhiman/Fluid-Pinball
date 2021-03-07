@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import json
 
 num_iterations=10
-num_policies=20
+num_policies=14
 CFD_timestep=5e-4
 CFD_timestep_spacing=5
 num_actions=15
@@ -13,8 +13,8 @@ dur_action_one=1.50838
 shedding_freq=8.42
 free_stream_vel=1.5
 sampling_periods=0.9
-gamma_act=0.02
-Json_files = True
+gamma_act=0.009
+Json_files = False
 
 shedding_period=1/shedding_freq
 CFD_timesteps_period=shedding_period/CFD_timestep
@@ -29,11 +29,11 @@ critic_losses=[]
 for policy in range(num_policies):
     for iteration in range(num_iterations):
         iteration_ID=policy*num_iterations+iteration+1
-        filename='../../Production Runs/Production Run 2/pickle_files/data_iteration_' + str(iteration_ID)+'.pickle'
+        filename='../../Production Runs/Production Run 3/pickle_files/data_iteration_' + str(iteration_ID)+'.pickle'
         with open(filename, 'rb') as handle:
             data = pickle.load(handle)
         master_data.append(data)
-    filename='../../Production Runs/Production Run 2/actor_critic_losses/actor_critic_losses_'+str(policy+1)+'.pickle'
+    filename='../../Production Runs/Production Run 3/actor_critic_losses/actor_critic_losses_'+str(policy+1)+'.pickle'
     with open(filename,'rb') as handle:
         data=pickle.load(handle)
     actor_losses.append(data['actor_losses'][-1])
@@ -154,9 +154,6 @@ def calculate_episode_var_mean_two(sens_data, CFD_timesteps_period, CFD_timestep
             episode_mean.append(sens_mean)
 
     return episode_var, episode_mean
-
-
-# In[8]:
 
 
 def plot_regular(y_data, x_label, y_label):
@@ -428,17 +425,17 @@ plot_regular(avg_J_flucs, 'Episode Number', 'Average J_Flucs')
 plot_regular(avg_J_acts, 'Epsiode Number', 'Average J_Acts')
 
 # plot_regular(total_J_tots,'Episode Number','Total J_Total')
-plot_regular(avg_J_tots, 'Episode Number', 'Average J_Total')
+# plot_regular(avg_J_tots, 'Episode Number', 'Average J_Total')
 
 # plot_policy_regular(total_rewards,'Policy Number','Total Episode Rewards',num_iterations)
 # plot_policy_regular(total_J_flucs,'Policy Number','Total J_Flucs',num_iterations)
 # plot_policy_regular(total_J_acts,'Policy Number','Total J_Acts',num_iterations)
 # plot_policy_regular(total_J_tots,'Policy Number','Total J_Total',num_iterations)
 
-plot_policy_regular(avg_rewards, 'Policy Number', 'Average Episode Rewards', num_iterations)
-plot_policy_regular(avg_J_flucs, 'Policy Number', 'Average J_Flucs', num_iterations)
-plot_policy_regular(avg_J_acts, 'Policy Number', 'Average J_Acts', num_iterations)
-plot_policy_regular(avg_J_tots, 'Policy Number', 'Average J_Total', num_iterations)
+# plot_policy_regular(avg_rewards, 'Policy Number', 'Average Episode Rewards', num_iterations)
+# plot_policy_regular(avg_J_flucs, 'Policy Number', 'Average J_Flucs', num_iterations)
+# plot_policy_regular(avg_J_acts, 'Policy Number', 'Average J_Acts', num_iterations)
+# plot_policy_regular(avg_J_tots, 'Policy Number', 'Average J_Total', num_iterations)
 
 # plot_policy_average(total_rewards,'Policy Number','Policy Total Rewards',num_iterations)
 # plot_policy_average(total_J_flucs,'Policy Number','Policy Total J_Flucs',num_iterations)
@@ -448,18 +445,18 @@ plot_policy_regular(avg_J_tots, 'Policy Number', 'Average J_Total', num_iteratio
 plot_policy_average(avg_rewards, 'Policy Number', 'Policy Average Rewards', num_iterations)
 plot_policy_average(avg_J_flucs, 'Policy Number', 'Policy Average J_Flucs', num_iterations)
 plot_policy_average(avg_J_acts, 'Policy Number', 'Policy Average J_Acts', num_iterations)
-plot_policy_average(avg_J_tots, 'Policy Number', 'Policy Average J_Tots', num_iterations)
+# plot_policy_average(avg_J_tots, 'Policy Number', 'Policy Average J_Tots', num_iterations)
 
 # RL CONVERGENCE CHECKS
 
-plot_regular(avg_STD, 'Episode Number', 'Average STD')
-plot_regular(avg_values, 'Episode Number', 'Average Value')
-plot_regular(critic_losses[1:], 'Policy Number', 'Critic Losses')
-plot_regular(actor_losses[1:], 'Policy Number', 'Actor Losses')
+# plot_regular(avg_STD, 'Episode Number', 'Average STD')
+# plot_regular(avg_values, 'Episode Number', 'Average Value')
+# plot_regular(critic_losses[1:], 'Policy Number', 'Critic Losses')
+# plot_regular(actor_losses[1:], 'Policy Number', 'Actor Losses')
 
 # RL CONVERGENCE CHECKS 2
 
-plot_std_reward_values(avg_STD, avg_rewards, avg_values, 1, 1, 8)
+# plot_std_reward_values(avg_STD, avg_rewards, avg_values, 1, 1, 8)
 
 print('STATS')
 
@@ -477,7 +474,7 @@ print('Lowest J Fluc: ', value, ' Episode: ', index + 1)
 
 # EPISODE CHECKS
 
-episode = 185
+episode = 136
 
 print('\nSTATS')
 
@@ -514,24 +511,24 @@ bot_sens_var, bot_sens_mean = calculate_episode_var_mean(bot_sens_data, CFD_time
                                                          CFD_timesteps_action_one, CFD_timestep_spacing, num_actions,
                                                          sampling_periods)
 
-# plot_episode_cyl_data(front_cyl_data,top_cyl_data,bot_cyl_data)
-# plot_episode_sens_data(top_sens_data,mid_sens_data,bot_sens_data,CFD_timestep_spacing)
+plot_episode_cyl_data(front_cyl_data,top_cyl_data,bot_cyl_data)
+plot_episode_sens_data(top_sens_data,mid_sens_data,bot_sens_data,CFD_timestep_spacing)
 
-plot_episode_sensor_sampling(top_sens_data, CFD_timesteps_period, CFD_timesteps_action,
-                             CFD_timesteps_action_one, CFD_timestep_spacing, num_actions,
-                             1.5, 'Top Sensor Data')
-
-plot_episode_sensor_sampling(mid_sens_data, CFD_timesteps_period, CFD_timesteps_action,
-                             CFD_timesteps_action_one, CFD_timestep_spacing, num_actions,
-                             1.5, 'Mid Sensor Data')
-
-plot_episode_sensor_sampling(bot_sens_data, CFD_timesteps_period, CFD_timesteps_action,
-                             CFD_timesteps_action_one, CFD_timestep_spacing, num_actions,
-                             1.5, 'Bot Sensor Data')
+# plot_episode_sensor_sampling(top_sens_data, CFD_timesteps_period, CFD_timesteps_action,
+#                              CFD_timesteps_action_one, CFD_timestep_spacing, num_actions,
+#                              1.5, 'Top Sensor Data')
+#
+# plot_episode_sensor_sampling(mid_sens_data, CFD_timesteps_period, CFD_timesteps_action,
+#                              CFD_timesteps_action_one, CFD_timestep_spacing, num_actions,
+#                              1.5, 'Mid Sensor Data')
+#
+# plot_episode_sensor_sampling(bot_sens_data, CFD_timesteps_period, CFD_timesteps_action,
+#                              CFD_timesteps_action_one, CFD_timestep_spacing, num_actions,
+#                              1.5, 'Bot Sensor Data')
 
 # plot_episode_sens_var(top_sens_var,mid_sens_var,bot_sens_var,CFD_timesteps_action_one,CFD_timesteps_action)
 # plot_episode_sens_mean(top_sens_mean,mid_sens_mean,bot_sens_mean,CFD_timesteps_action_one,CFD_timesteps_action)
-plot_regular(episode_stds, 'Action Number', 'STD')
+# plot_regular(episode_stds, 'Action Number', 'STD')
 
 total_variance_top = []
 total_variance_mid = []
@@ -604,16 +601,16 @@ for i in range(0, len(total_variance_top)):
 # plot_regular_two(sampling_time[:],mid_dv,'Sampling Time (Shedding Periods)','Mid Sensor Variance')
 # plot_regular_two(sampling_time[:],bot_dv,'Sampling Time (Shedding Periods)','Bot Sensor Variance')
 
-plt.figure(figsize=(15, 7.5))
-plt.plot(sampling_time[:], top_dv, label='Top Sensor Variance')
-plt.plot(sampling_time[:], mid_dv, label='Mid Sensor Variance')
-plt.plot(sampling_time[:], bot_dv, label='Bot Sensor Variance')
-plt.xlabel('Sampling Time (Shedding Periods)', size=15)
-plt.ylabel('Variance', size=15)
-plt.xticks(fontsize=20)
-plt.yticks(fontsize=20)
-plt.suptitle('Averaged Last 1 Policies', fontsize=16)
-plt.legend()
+# plt.figure(figsize=(15, 7.5))
+# plt.plot(sampling_time[:], top_dv, label='Top Sensor Variance')
+# plt.plot(sampling_time[:], mid_dv, label='Mid Sensor Variance')
+# plt.plot(sampling_time[:], bot_dv, label='Bot Sensor Variance')
+# plt.xlabel('Sampling Time (Shedding Periods)', size=15)
+# plt.ylabel('Variance', size=15)
+# plt.xticks(fontsize=20)
+# plt.yticks(fontsize=20)
+# plt.suptitle('Averaged Last 1 Policies', fontsize=16)
+# plt.legend()
 
 actions_state_1 = []
 actions_state_2 = []
@@ -652,40 +649,40 @@ for i in range(len(master_data)):
 
         actions_rewards.append(master_data[i]['rewards'][j])
 
-a = np.mean((np.array(actions_state_1) + 1.0) / 5.0)
-b = np.mean((np.array(actions_state_2) + 1.0) / 5.0)
-c = np.mean((np.array(actions_state_3) + 1.0) / 5.0)
+# a = np.mean((np.array(actions_state_1) + 1.0) / 5.0)
+# b = np.mean((np.array(actions_state_2) + 1.0) / 5.0)
+# c = np.mean((np.array(actions_state_3) + 1.0) / 5.0)
+#
+# d = np.std((np.array(actions_state_1) + 1.0) / 5.0)
+# e = np.std((np.array(actions_state_2) + 1.0) / 5.0)
+# f = np.std((np.array(actions_state_3) + 1.0) / 5.0)
+#
+# g = np.mean(np.array(actions_rewards))
+# h = np.std(np.array(actions_rewards))
 
-d = np.std((np.array(actions_state_1) + 1.0) / 5.0)
-e = np.std((np.array(actions_state_2) + 1.0) / 5.0)
-f = np.std((np.array(actions_state_3) + 1.0) / 5.0)
+# print('Mean Variance', np.mean([a, b, c]))
+# print('STD Variance', np.mean([d, e, f]))
+# print('Mean Reward', g)
+# print('STD Reward', f)
+# print(' ')
 
-g = np.mean(np.array(actions_rewards))
-f = np.std(np.array(actions_rewards))
+# recent_episodes = 10
+# recent_actions = recent_episodes * num_actions
+# a = np.mean((np.array(actions_state_1[0:750]) + 1.0) / 5.0)
+# b = np.mean((np.array(actions_state_2[0:750]) + 1.0) / 5.0)
+# c = np.mean((np.array(actions_state_3[0:750]) + 1.0) / 5.0)
+#
+# d = np.std((np.array(actions_state_1[0:750]) + 1.0) / 5.0)
+# e = np.std((np.array(actions_state_2[0:750]) + 1.0) / 5.0)
+# f = np.std((np.array(actions_state_3[0:750]) + 1.0) / 5.0)
+#
+# g = np.mean(np.array(actions_rewards[0:750]))
+# h = np.std(np.array(actions_rewards[0:750]))
 
-print('Mean Variance', np.mean([a, b, c]))
-print('STD Variance', np.mean([d, e, f]))
-print('Mean Reward', g)
-print('STD Reward', f)
-print(' ')
-
-recent_episodes = 10
-recent_actions = recent_episodes * num_actions
-a = np.mean((np.array(actions_state_1[0:750]) + 1.0) / 5.0)
-b = np.mean((np.array(actions_state_2[0:750]) + 1.0) / 5.0)
-c = np.mean((np.array(actions_state_3[0:750]) + 1.0) / 5.0)
-
-d = np.std((np.array(actions_state_1[0:750]) + 1.0) / 5.0)
-e = np.std((np.array(actions_state_2[0:750]) + 1.0) / 5.0)
-f = np.std((np.array(actions_state_3[0:750]) + 1.0) / 5.0)
-
-g = np.mean(np.array(actions_rewards[0:750]))
-f = np.std(np.array(actions_rewards[0:750]))
-
-print('Recent Mean Variance', np.mean([a, b, c]))
-print('Recent STD Variance', np.mean([d, e, f]))
-print('Recent Mean Reward', g)
-print('Recent STD Reward', f)
+# print('Recent Mean Variance', np.mean([a, b, c]))
+# print('Recent STD Variance', np.mean([d, e, f]))
+# print('Recent Mean Reward', g)
+# print('Recent STD Reward', f)
 
 # plot_regular(np.array(actions_state_1), 'Actions', 'Top Sensor State')
 # plot_regular(np.array(actions_state_2), 'Actions', 'Mid Sensor State')
@@ -742,9 +739,9 @@ for i in range(len(master_data)):
 top_sens_subtracted = (np.array(actions_state_1) + 1.0) / 5.0 - np.array(actions_variance_top_sens)
 mid_sens_subtracted = (np.array(actions_state_2) + 1.0) / 5.0 - np.array(actions_variance_mid_sens)
 bot_sens_subtracted = (np.array(actions_state_3) + 1.0) / 5.0 - np.array(actions_variance_bot_sens)
-print('Top Sensor Difference', np.mean(top_sens_subtracted))
-print('Top Sensor Difference', np.mean(mid_sens_subtracted))
-print('Top Sensor Difference', np.mean(bot_sens_subtracted))
+# print('Top Sensor Difference', np.mean(top_sens_subtracted))
+# print('Top Sensor Difference', np.mean(mid_sens_subtracted))
+# print('Top Sensor Difference', np.mean(bot_sens_subtracted))
 
 if Json_files==True:
     for i in range(len(master_data)):
@@ -766,7 +763,7 @@ if Json_files==True:
         json_dict['average_reward'] = avg_rewards[i]
 
         iteration = master_data[i]['iteration_ID']
-        filename = '../../Production Runs/Production Run 2/json_files/data_iteration_' + str(iteration) + '.json'
+        filename = '../../Production Runs/Production Run 3/json_files/data_iteration_' + str(iteration) + '.json'
         with open(filename, 'w') as outfile:
             json.dump(json_dict, outfile)
 
