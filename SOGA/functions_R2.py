@@ -69,14 +69,14 @@ def genesis(size):
     return population
 
 #Fluid Pinball GA
-def GA(starting_gen, target_cost, max_gen, size, mut_prob, mut_type, search_limit, dt, tsteps,n_genes,abs_counter,gen_buffer_limit):
+def GA(starting_gen, target_cost, max_gen, size, mut_prob, mut_type, search_limit, dt, tsteps,n_genes,abs_counter):
 
     fittest = []
     cost_fittest_s = []
     gen_s = []
     sat_counter = 0
-    buffer_count = 0
     population_data = {}
+    mut_g = 0
 
 
 
@@ -96,37 +96,43 @@ def GA(starting_gen, target_cost, max_gen, size, mut_prob, mut_type, search_limi
             cost_fittest_s = load_cost_fittest()
 
         for gen in range(starting_gen+1,max_gen+1):
+            mut_g += 1
+            print(f"generation counter for mutation: {mut_g}")
             population_data[gen] = population
+            cost_population = []
+            for ind in population:
+                cost_population.append(ind.j_total)
             gen_s.append(gen)
             parents = fitness(population = population)
             fittest.append(parents[0])
             cost_fittest = parents[0].j_total
             cost_fittest_s.append(cost_fittest)
 
-            buffer_count += 1
-            if buffer_count >= gen_buffer_limit:
-                message = exit_check(cost_fittest_s = cost_fittest_s,target_cost = target_cost,
-                                     sat_counter = sat_counter, buffer_count = gen_buffer_limit)
-                if message == 'first_saturation':
-                    print('first saturation')
-                    mut_prob = 0.3
-                    mut_type = 'motor'
-                    sat_counter += 1
-                    buffer_count = 0
-                if message == 'second_saturation':
-                    print('second saturation')
-                    mut_prob = 1
-                    mut_type = 'gene'
-                    sat_counter += 1
-                    buffer_count = 0
-                if message == 'exit':
-                    print(f'Fittest cost {cost_fittest} less than equal target cost {target_cost}.')
-                    break
+            #Exit Check
+            message = exit_check(cost_population = cost_population,
+                                 cost_fittest_s = cost_fittest_s,
+                                 target_cost = target_cost,
+                                 sat_counter = sat_counter,
+                                 req_cost_std = 0.5)
+            if message == 'first_saturation' and sat_counter == 0:
+                print('first saturation')
+                mut_g = 0
+                mut_prob = 1
+                mut_type = 'gene'
+                sat_counter += 1
+            elif message == 'exit' and mut_type == 'gene':
+                print(f'Run Converged, Fittest cost {cost_fittest}')
+                break
+
+            elif message == 'terminate':
+                print(f'Max Fitness Reached, Fittest cost {cost_fittest}')
+                break
+
 
             for item in range(3):
                 random.shuffle(parents)
 
-            children = mate(parents=parents, mut_prob=mut_prob, mut_type=mut_type, g=gen, G=max_gen, limit=search_limit,n_genes = n_genes)
+            children = mate(parents=parents, mut_prob=mut_prob, mut_type=mut_type, g=mut_g, G=max_gen, limit=search_limit,n_genes = n_genes)
             children,abs_counter = tag(group = children, abs_counter = abs_counter)
             if children == None:
                 break
@@ -151,35 +157,38 @@ def GA(starting_gen, target_cost, max_gen, size, mut_prob, mut_type, search_limi
         population = rastrigin(population = population)
 
         for gen in range(starting_gen+1,max_gen+1):
+            mut_g += 1
+            print(f"generation counter for mutation: {mut_g}")
             population_data[gen] = population
+            cost_population = []
+            for ind in population:
+                cost_population.append(ind.ras)
             gen_s.append(gen)
             parents = fitness_ras(population = population)
             fittest.append(parents[0])
             cost_fittest = parents[0].ras
             cost_fittest_s.append(cost_fittest)
 
-            buffer_count += 1
-            if buffer_count >= gen_buffer_limit:
-                message = exit_check(cost_fittest_s=cost_fittest_s, target_cost=target_cost,
-                                     sat_counter=sat_counter, buffer_count = gen_buffer_limit)
-                if message == 'first_saturation':
-                    mut_prob = 0.3
-                    mut_type = 'motor'
-                    sat_counter += 1
-                    buffer_count = 0
-                if message == 'second_saturation':
-                    mut_prob = 1
-                    mut_type = 'gene'
-                    sat_counter += 1
-                    buffer_count = 0
-                if message == 'exit':
-                    print(f'Fittest cost {cost_fittest} less than equal target cost {target_cost}.')
-                    break
+            #Exit Check
+            message = exit_check(cost_population=cost_population,
+                                 cost_fittest_s = cost_fittest_s,
+                                 target_cost=target_cost,
+                                 sat_counter=sat_counter,
+                                 req_cost_std = 0.5)
+            if message == 'first_saturation' and sat_counter == 0:
+                mut_prob = 1
+                mut_type = 'gene'
+                mut_g = 0
+                sat_counter += 1
+            elif message == 'exit' and mut_type == 'gene':
+                print(f'Run Converged, Fittest cost {cost_fittest}')
+                break
 
-            for item in range(3):
-                random.shuffle(parents)
+            elif message == 'terminate':
+                print(f'Max Fitness Reached, Fittest cost {cost_fittest}')
+                break
 
-            children = mate_ras(parents = parents, mut_prob = mut_prob, mut_type = mut_type, g = gen, G = max_gen, limit = search_limit,n_genes = n_genes)
+            children = mate_ras(parents = parents, mut_prob = mut_prob, mut_type = mut_type, g = mut_g, G = max_gen, limit = search_limit,n_genes = n_genes)
             children, abs_counter = tag(group=children, abs_counter=abs_counter)
             if children == None:
                 break
@@ -649,21 +658,16 @@ def plotter(type,raw_data,total_gen,title='',xlabel='',label='',individual_id = 
         plt.xlabel(xlabel)
         plt.show()
 
-def exit_check(cost_fittest_s,target_cost,sat_counter, buffer_count):
-    p_diffs = []
-    for i in range(1,buffer_count):
-        p_diff = abs((cost_fittest_s[-1] - cost_fittest_s[-1-i])/((cost_fittest_s[-1] + cost_fittest_s[-1-i])/2))*100
-        p_diffs.append(p_diff)
-    print(p_diffs)
-    if max(p_diffs) <= 0.5:
+def exit_check(cost_population,cost_fittest_s,target_cost,sat_counter,req_cost_std):
+    cost_std = np.std(cost_population)
+    print(f"Cost Standard Deviation is: {cost_std}")
+    if cost_std <= req_cost_std:
         if sat_counter == 0:
             return 'first_saturation'
-        if sat_counter == 1:
-            return 'second_saturation'
-        if sat_counter == 2:
+        elif sat_counter == 1:
             return 'exit'
     if cost_fittest_s[-1] == target_cost:
-        return 'exit'
+        return 'terminate'
     return 'no action'
 
 def writeout(url,list):
