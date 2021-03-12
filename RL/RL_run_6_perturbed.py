@@ -568,23 +568,25 @@ class Iteration():
         self.state_bot_cyl_phase.append(action_clipped[10] / 3.0)
         self.state_bot_cyl_freq.append(action_clipped[11] / 3.0)
         
-        front_cyl_offset_ramp = action_clipped[0] * 150
-        front_cyl_offset=front_cyl_offset_ramp + (self.state_front_cyl_offset[-1]*1000)
         front_cyl_amp = action_clipped[1] * 333
         front_cyl_phase = action_clipped[2] * 1.046
         front_cyl_freq = action_clipped[3] * 1.403 + 4.21
 
-        top_cyl_offset_ramp = action_clipped[4] * 150
-        top_cyl_offset=top_cyl_offset_ramp + (self.state_top_cyl_offset[-1]*1000)
         top_cyl_amp = action_clipped[5] * 333
         top_cyl_phase = action_clipped[6] * 1.046
         top_cyl_freq = action_clipped[7] * 1.403 + 4.21
 
-        bot_cyl_offset_ramp = action_clipped[8] * 150
-        bot_cyl_offset=bot_cyl_offset_ramp + (self.state_bot_cyl_offset[-1]*1000)
         bot_cyl_amp = action_clipped[9] * 333
         bot_cyl_phase = action_clipped[10] * 1.046
         bot_cyl_freq = action_clipped[11] * 1.403 + 4.21
+        
+        front_cyl_offset_ramp = action_clipped[0] * 150
+        top_cyl_offset_ramp = action_clipped[4] * 150
+        bot_cyl_offset_ramp = action_clipped[8] * 150
+        
+        front_cyl_offset=front_cyl_offset_ramp + (self.state_front_cyl_offset[-1]*1000)
+        top_cyl_offset=top_cyl_offset_ramp + (self.state_top_cyl_offset[-1]*1000)
+        bot_cyl_offset=bot_cyl_offset_ramp + (self.state_bot_cyl_offset[-1]*1000)
         
         if front_cyl_offset > 1000:
             front_cyl_offset=1000
@@ -613,8 +615,8 @@ class Iteration():
             bot_cyl_amp=0
         
         self.state_front_cyl_offset.append(front_cyl_offset/1000)
-        self.state_top_cyl_offset.append(front_cyl_offset/1000)
-        self.state_bot_cyl_offset.append(front_cyl_offset/1000)
+        self.state_top_cyl_offset.append(top_cyl_offset/1000)
+        self.state_bot_cyl_offset.append(bot_cyl_offset/1000)
 
         if front_cyl_freq <= 5.0 and top_cyl_freq <= 5.0 and bot_cyl_freq <= 5.0:
             if self.action_counter==1:
@@ -634,8 +636,7 @@ class Iteration():
                 CFD_timesteps_action=self.CFD_timesteps_period*(self.shedding_freq/min_cyl_freq)+self.CFD_timesteps_action_one_add
             else:
                 CFD_timesteps_action=self.CFD_timesteps_period*(self.shedding_freq/min_cyl_freq)
-        
-        
+                
         CFD_timesteps_action=int(CFD_timesteps_action)
         
         if (CFD_timesteps_action % self.CFD_timestep_spacing) != 0:
