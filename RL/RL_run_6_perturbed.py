@@ -555,7 +555,6 @@ class Iteration():
             else:
                 action_clipped[i] = action[i]
 
-
         self.state_front_cyl_amp.append(action_clipped[1] / 3.0)
         self.state_front_cyl_phase.append(action_clipped[2] / 3.0)
         self.state_front_cyl_freq.append(action_clipped[3] / 3.0)
@@ -570,15 +569,27 @@ class Iteration():
         
         front_cyl_amp = action_clipped[1] * 333
         front_cyl_phase = action_clipped[2] * 1.046
-        front_cyl_freq = action_clipped[3] * 1.403 + 4.21
+        
+        if action_clipped[3] <=0.5629:
+            front_cyl_freq=0.0
+        else:
+            front_cyl_freq=-1.4033*action_clipped[3]+9.2099
 
         top_cyl_amp = action_clipped[5] * 333
         top_cyl_phase = action_clipped[6] * 1.046
-        top_cyl_freq = action_clipped[7] * 1.403 + 4.21
+        
+        if action_clipped[7] <=0.5629:
+            top_cyl_freq=0.0
+        else:
+            top_cyl_freq=-1.4033*action_clipped[7]+9.2099
 
         bot_cyl_amp = action_clipped[9] * 333
         bot_cyl_phase = action_clipped[10] * 1.046
-        bot_cyl_freq = action_clipped[11] * 1.403 + 4.21
+        
+        if action_clipped[11] <=0.5629:
+            bot_cyl_freq=0.0
+        else:
+            bot_cyl_freq=-1.4033*action_clipped[11]+9.2099
         
         front_cyl_offset_ramp = action_clipped[0] * 150
         top_cyl_offset_ramp = action_clipped[4] * 150
@@ -602,17 +613,17 @@ class Iteration():
             bot_cyl_offset=-1000
             
         if front_cyl_freq <= 5.0:
-            front_cyl_freq = 0
-            front_cyl_phase=0
-            front_cyl_amp=0
+            front_cyl_freq = 0.0
+            front_cyl_phase=0.0
+            front_cyl_amp=0.0
         if top_cyl_freq <= 5.0:
-            top_cyl_freq = 0
-            top_cyl_phase=0
-            top_cyl_amp=0
+            top_cyl_freq = 0.0
+            top_cyl_phase=0.0
+            top_cyl_amp=0.0
         if bot_cyl_freq <= 5.0:
-            bot_cyl_freq = 0
-            bot_cyl_phase=0
-            bot_cyl_amp=0
+            bot_cyl_freq = 0.0
+            bot_cyl_phase=0.0
+            bot_cyl_amp=0.0
         
         self.state_front_cyl_offset.append(front_cyl_offset/1000)
         self.state_top_cyl_offset.append(top_cyl_offset/1000)
