@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import json
 
 num_iterations=10
-num_policies=14
+num_policies=20
 CFD_timestep=5e-4
 CFD_timestep_spacing=5
 num_actions=15
@@ -474,7 +474,7 @@ print('Lowest J Fluc: ', value, ' Episode: ', index + 1)
 
 # EPISODE CHECKS
 
-episode = 136
+episode = 198
 
 print('\nSTATS')
 
@@ -511,7 +511,7 @@ bot_sens_var, bot_sens_mean = calculate_episode_var_mean(bot_sens_data, CFD_time
                                                          CFD_timesteps_action_one, CFD_timestep_spacing, num_actions,
                                                          sampling_periods)
 
-plot_episode_cyl_data(front_cyl_data,top_cyl_data,bot_cyl_data)
+# plot_episode_cyl_data(front_cyl_data,top_cyl_data,bot_cyl_data)
 plot_episode_sens_data(top_sens_data,mid_sens_data,bot_sens_data,CFD_timestep_spacing)
 
 # plot_episode_sensor_sampling(top_sens_data, CFD_timesteps_period, CFD_timesteps_action,
