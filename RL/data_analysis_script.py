@@ -419,10 +419,10 @@ avg_J_tots = np.array(avg_J_flucs) + gamma_act * np.array(avg_J_acts)
 plot_regular(avg_rewards, 'Episode Number', 'Average Episode Rewards')
 
 # plot_regular(total_J_flucs,'Episode Number','Total J_Flucs')
-plot_regular(avg_J_flucs, 'Episode Number', 'Average J_Flucs')
+plot_regular(avg_J_flucs, 'Episode Number', 'Average $\mathcal{J}_{Fluc}$')
 
 # plot_regular(total_J_acts,'Episode Number','Total J_Acts')
-plot_regular(avg_J_acts, 'Epsiode Number', 'Average J_Acts')
+plot_regular(avg_J_acts, 'Epsiode Number', 'Average $\mathcal{J}_{Act}$')
 
 # plot_regular(total_J_tots,'Episode Number','Total J_Total')
 # plot_regular(avg_J_tots, 'Episode Number', 'Average J_Total')
@@ -443,13 +443,13 @@ plot_regular(avg_J_acts, 'Epsiode Number', 'Average J_Acts')
 # plot_policy_average(total_J_tots,'Policy Number','Policy Total J_Tots',num_iterations)
 
 plot_policy_average(avg_rewards, 'Policy Number', 'Policy Average Rewards', num_iterations)
-plot_policy_average(avg_J_flucs, 'Policy Number', 'Policy Average J_Flucs', num_iterations)
-plot_policy_average(avg_J_acts, 'Policy Number', 'Policy Average J_Acts', num_iterations)
+plot_policy_average(avg_J_flucs, 'Policy Number', 'Policy Average $\mathcal{J}_{Fluc}$', num_iterations)
+plot_policy_average(avg_J_acts, 'Policy Number', 'Policy Average $\mathcal{J}_{Act}$', num_iterations)
 # plot_policy_average(avg_J_tots, 'Policy Number', 'Policy Average J_Tots', num_iterations)
 
 # RL CONVERGENCE CHECKS
 
-# plot_regular(avg_STD, 'Episode Number', 'Average STD')
+plot_regular(avg_STD, 'Episode Number', 'Average Episode Standard Deviation')
 # plot_regular(avg_values, 'Episode Number', 'Average Value')
 # plot_regular(critic_losses[1:], 'Policy Number', 'Critic Losses')
 # plot_regular(actor_losses[1:], 'Policy Number', 'Actor Losses')
