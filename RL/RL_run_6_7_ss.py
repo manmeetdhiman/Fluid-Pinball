@@ -762,7 +762,7 @@ class Iteration():
             self.mus.append(mu)
             self.stds.append(std)
 
-            mot_data = self.calculate_mot_data(action)
+            mot_data = self.calculate_mot_data(mu)
 
             time_step_end = self.time_step_start + self.CFD_timesteps_actions[-1] - 1
 
@@ -789,6 +789,8 @@ class Iteration():
             self.is_terminals.append(is_terminal)
 
             self.time_step_start = time_step_end + 1
+            
+            self.save_action()
 
     def run_action(self):
         self.action_counter += 1
@@ -810,7 +812,7 @@ class Iteration():
         self.mus.append(mu)
         self.stds.append(std)
 
-        mot_data = self.calculate_mot_data(action)
+        mot_data = self.calculate_mot_data(mu)
 
         time_step_end = self.time_step_start + self.CFD_timesteps_actions[-1] - 1
 
@@ -851,6 +853,8 @@ class Iteration():
         self.is_terminals.append(is_terminal)
 
         self.time_step_start = time_step_end + 1
+        
+        self.save_action()
 
     def update_action(self, action, value, dist, mu, std):
         self.action = action
@@ -872,6 +876,21 @@ class Iteration():
                              'CFD_timesteps_actions':self.CFD_timesteps_actions}
 
         filename = 'data_iteration_' + str(self.iteration_ID) + '.pickle'
+        with open(filename, 'wb') as handle:
+            pickle.dump(iteration_results, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            
+    def save_action(self):
+        iteration_results = {'iteration_ID': self.iteration_ID, 'states': self.states, 'actions': self.actions,
+                             'rewards': self.rewards, 'mus': self.mus, 'stds': self.stds, 'values': self.values,
+                             'is_terminals': self.is_terminals, 'log_probs': self.log_probs,
+                             'front_cyl_RPS': self.front_cyl_RPS, 'top_cyl_RPS': self.top_cyl_RPS,
+                             'bot_cyl_RPS': self.bot_cyl_RPS, 'front_cyl_RPS_PI': self.front_cyl_RPS_PI,
+                             'top_cyl_RPS_PI': self.top_cyl_RPS_PI, 'bot_cyl_RPS_PI': self.bot_cyl_RPS_PI,
+                             'top_sens_values': self.top_sens_values, 'mid_sens_values': self.mid_sens_values,
+                             'bot_sens_values': self.bot_sens_values, 'mot_timesteps_actions': self.mot_timesteps_actions,
+                             'CFD_timesteps_actions':self.CFD_timesteps_actions}
+
+        filename = 'data_action_' + str(self.action_counter) + '.pickle'
         with open(filename, 'wb') as handle:
             pickle.dump(iteration_results, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -932,13 +951,18 @@ CFD_timestep = 5e-4
 mot_timestep = 5e-4
 CFD_timestep_spacing = 5
 dur_ramps = 0.05
-num_actions = 15
+
+# Change num_actions so that the total episode length is till SS. The total duration of the iteration will be:
+# dur_action_one+num_actions*dur_actions (units: shedding periods)
+num_actions = 42
 num_policies = 40
-num_iterations = 10
+# Only a single iteration is used for SS run 
+num_iterations = 1
 free_stream_vel = 1.5
 sampling_periods = 0.90
-load_weights = False
-policy_num_load_weights = 0
+# Load the policy for the SS run
+load_weights = True
+policy_num_load_weights = 20
 
 
 # This is used if we load the weights. Usually, this is not used though unless the simulation gets interrupted
@@ -953,8 +977,6 @@ def main():
     # here into a pickle file
 
     for policy in range(policy_num_load_weights, num_policies):
-        actor_lr = (actor_lr_max - actor_lr_min) / (num_policies) * (num_policies - policy) + actor_lr_min
-        critic_lr = (critic_lr_max - critic_lr_min) / (num_policies) * (num_policies - policy) + critic_lr_min
         Iterations = []
         for iteration in range(num_iterations):
             iteration_ID = num_iterations * policy + iteration + 1
@@ -991,39 +1013,6 @@ def main():
 
         for iteration in range(num_iterations):
             Iterations[iteration].save_iteration()
-        for iteration in range(num_iterations):
-            ppo_agent.states.extend(Iterations[iteration].states)
-            ppo_agent.actions.extend(Iterations[iteration].actions)
-            ppo_agent.rewards.extend(Iterations[iteration].rewards)
-            ppo_agent.is_terminals.extend(Iterations[iteration].is_terminals)
-            ppo_agent.log_probs.extend(Iterations[iteration].log_probs)
-            ppo_agent.values.extend(Iterations[iteration].values)
-            ppo_agent.next_states.extend(Iterations[iteration].next_states)
-
-        for update in range(num_updates):
-            ppo_agent.values = []
-            for i in range(len(ppo_agent.states)):
-                value = ppo_agent.critic.forward(torch.FloatTensor(ppo_agent.states[i]))
-                value = value.detach().numpy()
-                ppo_agent.values.append(value)
-            next_state = ppo_agent.next_states[-1]
-            value = ppo_agent.critic.forward(torch.FloatTensor(next_state))
-            value = value.detach().numpy()
-            ppo_agent.values.append(value)
-            ppo_agent._update_weights(lr_manual_bool, actor_lr, critic_lr)
-
-        ppo_agent._save_weights((policy + 1))
-        ppo_agent.clear_memory()
-        print('Weights Updated')
-
-        critic_losses = ppo_agent.critic_losses[-num_updates:]
-        actor_losses = ppo_agent.actor_losses[-num_updates:]
-        total_critic_losses.append(critic_losses)
-        total_actor_losses.append(actor_losses)
-        losses_dictionary = {'actor_losses': total_actor_losses, 'critic_losses': total_critic_losses}
-        losses_filename = 'actor_critic_losses_' + str(policy + 1) + '.pickle'
-        with open(losses_filename, 'wb') as handle:
-            pickle.dump(losses_dictionary, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         os.chdir('../')
 
