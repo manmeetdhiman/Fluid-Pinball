@@ -29,11 +29,11 @@ critic_losses=[]
 for policy in range(num_policies):
     for iteration in range(num_iterations):
         iteration_ID=policy*num_iterations+iteration+1
-        filename='../../Production Runs/Production Run 3/pickle_files/data_iteration_' + str(iteration_ID)+'.pickle'
+        filename='../../Production Runs/Production Run 2/pickle_files/data_iteration_' + str(iteration_ID)+'.pickle'
         with open(filename, 'rb') as handle:
             data = pickle.load(handle)
         master_data.append(data)
-    filename='../../Production Runs/Production Run 3/actor_critic_losses/actor_critic_losses_'+str(policy+1)+'.pickle'
+    filename='../../Production Runs/Production Run 2/actor_critic_losses/actor_critic_losses_'+str(policy+1)+'.pickle'
     with open(filename,'rb') as handle:
         data=pickle.load(handle)
     actor_losses.append(data['actor_losses'][-1])
