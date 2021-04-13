@@ -1,0 +1,388 @@
+;; Create function to read in which TimeStep to restart at
+(define file (open-input-file "t_start.txt"))
+(define t_start (read file))
+(define temp (string-append "TimeStep-" (number->string t_start) ".cas"))
+(define timestep_case_string (string-append "/file/read-case-data " temp))
+(define t_end (read file))
+
+(ti-menu-load-string timestep_case_string)
+
+(if (= (rpgetvar 'time-step) t_start)
+
+  (begin
+    ;; ---------------- SIM SETTINGS ----------------
+    (rp-var-define 'write-ascii? 0 'any #t) (rpsetvar 'write-ascii? 1)  ;; 1 to output ascii files of the fields
+    (rp-var-define 'ascii-interval 0 'any #t) (rpsetvar 'ascii-interval 5)  ;; ascii files interval in time step
+    (rp-var-define 'ascii-files 0 'any #t) (rpsetvar 'ascii-files 2000)  ;; number ascii files to keep, the most recent ones
+    (rp-var-define 'total-time-steps 0 'any #t) (rpsetvar 'total-time-steps t_end) ;; define total time step to solve
+    (rp-var-define 'delete-data? 0 'any #t) (rpsetvar 'delete-data? 1) ;; delete-data?=1 means it only keeps the most current case and data files and delete the old ones
+    (rp-var-define 'actuate? 0 'any #t) (rpsetvar 'actuate? 1)
+    (rp-var-define 'perturbation? 0 'any #t) (rpsetvar 'perturbation? 1)
+    (rp-var-define 'dt 0 'any #t) (rpsetvar 'dt 0.0005) ;; set time step size
+    (rp-var-define 'iteration 0 'any #t) (rpsetvar 'iteration 25) ;; solving iteration per time step
+    (rp-var-define 'case-name 0 'any #t)  (rpsetvar 'case-name "TimeStep-")
+    (rp-var-define 'u-inf 0 'any #t) (rpsetvar 'u-inf 1.5) ;; set inlet velocity
+
+    (ti-menu-load-string (string-append "/define/boundary-conditions/velocity-inlet velocity_inlet no no yes yes no " (number->string (rpgetvar 'u-inf)) " no 0 no no yes 5 10"))
+    ;; ----------------------------------------------
+
+    ;; ---------------- DEFINE VARIABLES ----------------
+    ;; Define rotation speeds for each cylinder.
+    (rp-var-define 'wf 0 'any #t) (rpsetvar 'wf 0)
+    (rp-var-define 'wt 0 'any #t) (rpsetvar 'wt 0)
+    (rp-var-define 'wb 0 'any #t) (rpsetvar 'wb 0)
+
+    (rp-var-define 'power 0 'any #t) (rpsetvar 'power 0) ;; initialize power function to zero. this is the power consumption of the cylinders due to fluid shear and drag
+
+    (rp-var-define 'lift-front 0 'any #t) (rpsetvar 'lift-front 0)
+    (rp-var-define 'lift-top 0 'any #t) (rpsetvar 'lift-top 0)
+    (rp-var-define 'lift-bot 0 'any #t) (rpsetvar 'lift-bot 0)
+
+    (rp-var-define 'drag-front 0 'any #t) (rpsetvar 'drag-front 0)
+    (rp-var-define 'drag-top 0 'any #t) (rpsetvar 'drag-top 0)
+    (rp-var-define 'drag-bot 0 'any #t) (rpsetvar 'drag-bot 0)
+
+    (rp-var-define 'torque-front 0 'any #t) (rpsetvar 'torque-front 0)
+    (rp-var-define 'torque-top 0 'any #t) (rpsetvar 'torque-top 0)
+    (rp-var-define 'torque-bot 0 'any #t) (rpsetvar 'torque-bot 0)
+
+    (rp-var-define 'centralgap 0 'any #t) (rpsetvar 'centralgap 0)
+    (rp-var-define 'topgap 0 'any #t) (rpsetvar 'topgap 0)
+    (rp-var-define 'botgap 0 'any #t) (rpsetvar 'botgap 0)
+    (rp-var-define 'cavity-v 0 'any #t) (rpsetvar 'cavity-v 0)
+    (rp-var-define 'jet-v 0 'any #t) (rpsetvar 'jet-v 0)
+    (rp-var-define 'topshear-v 0 'any #t) (rpsetvar 'topshear-v 0)
+    (rp-var-define 'botshear-v 0 'any #t) (rpsetvar 'botshear-v 0)
+    (rp-var-define 'downstreamcenter-v 0 'any #t) (rpsetvar 'downstreamcenter-v 0)
+    (rp-var-define 'downstreamtop-v 0 'any #t) (rpsetvar 'downstreamtop-v 0)
+    (rp-var-define 'downstreambot-v 0 'any #t) (rpsetvar 'downstreambot-v 0)
+
+    (rp-var-define 'f-cx 0 'any #t) (rpsetvar 'f-cx -0.01732)
+    (rp-var-define 'f-cy 0 'any #t) (rpsetvar 'f-cy 0)
+    (rp-var-define 'f-id 0 'any #t) (rpsetvar 'f-id "wall_front_cylinder")
+
+    (rp-var-define 't-cx 0 'any #t) (rpsetvar 't-cx 0.00866)
+    (rp-var-define 't-cy 0 'any #t) (rpsetvar 't-cy 0.015)
+    (rp-var-define 't-id 0 'any #t) (rpsetvar 't-id "wall_top_cylinder")
+
+    (rp-var-define 'b-cx 0 'any #t) (rpsetvar 'b-cx 0.00866)
+    (rp-var-define 'b-cy 0 'any #t) (rpsetvar 'b-cy -0.015)
+    (rp-var-define 'b-id 0 'any #t) (rpsetvar 'b-id "wall_bottom_cylinder")
+    ;; ----------------------------------------------
+  ) ;; end begin statement
+
+  () ;; not sure what this is for
+) ;; end if statement
+
+;; ---------------- USER DEFINED FUNCTIONS  ----------------
+
+(define output-port (open-output-file "output.txt" "a")) ;;; Fluent will output a this file that contains the information that you want it to show
+
+;;; this function calculates the power consumption of the cylinders due to fluid
+(define (calc-P 0)
+  (rpsetvar 'power (- (* (rpgetvar 'u-inf) (+ (rpgetvar 'drag-front) (rpgetvar 'drag-top) (rpgetvar 'drag-bot))) (+ (* (rpgetvar 'torque-front) (rpgetvar 'wf)) (* (rpgetvar 'torque-top) (rpgetvar 'wt)) (* (rpgetvar 'torque-bot) (rpgetvar 'wb)))))
+)
+
+;;; function that assigns variables that can be used in closed-loop control, also will be written in output file
+(define (read-monitor void)
+
+  (ti-menu-load-string "/define/parameters/output-parameters write-all-to-file monitor")
+  (define monitor-port (open-input-file "monitor"))
+  (read monitor-port)
+  (read monitor-port)
+  (read monitor-port)
+  (read monitor-port)
+  (read monitor-port)
+  (read monitor-port)
+
+  (read monitor-port)
+  (rpsetvar 'drag-front (read monitor-port)) ;;;; drag of front cylinder
+
+  (read monitor-port)
+  (rpsetvar 'drag-top (read monitor-port)) ;;;; drag of top cylinder
+
+  (read monitor-port)
+  (rpsetvar 'drag-bot (read monitor-port)) ;;;; drag of bottom cylinder
+
+  (read monitor-port)
+  (rpsetvar 'lift-front (read monitor-port)) ;;;; lift of front cylinder
+
+  (read monitor-port)
+  (rpsetvar 'lift-top (read monitor-port)) ;;;; lift of top cylinder
+
+  (read monitor-port)
+  (rpsetvar 'lift-bot (read monitor-port))  ;;; lift of bottom cylinder
+
+  (read monitor-port)
+  (rpsetvar 'torque-front (read monitor-port))  ;;; torque of front cylinder
+
+  (read monitor-port)
+  (rpsetvar 'torque-top (read monitor-port))  ;;; torque of top cylinder
+
+  (read monitor-port)
+  (rpsetvar 'torque-bot (read monitor-port))  ;;; torque of bottom cylinder
+
+  (close-input-port monitor-port)
+  (remove "monitor")
+
+  (ti-menu-load-string "/report/surface-integrals/volume-flow-rate x=0pt00866_y=-0pt005_to_x=0pt00866_y=0pt005 x=-0pt00866_y=0pt005_to_x=0_y=0pt01 x=-0pt00866_y=-0pt005_to_x=0_y=-0pt01 () yes flowrate")
+  (define flowrate-port (open-input-file "flowrate"))
+  (read flowrate-port)
+  (read flowrate-port)
+  (read flowrate-port)
+  (read flowrate-port)
+  (read flowrate-port)
+  (read flowrate-port)
+  (read flowrate-port)
+
+  (read flowrate-port)
+  (rpsetvar 'centralgap (read flowrate-port))  ;;;; volumetric gap flow between top and bottom cylinders
+
+  (read flowrate-port)
+  (rpsetvar 'topgap (read flowrate-port))   ;;;; volumetric gap flow between front and top cylinders
+
+  (read flowrate-port)
+  (rpsetvar 'botgap (read flowrate-port))  ;;;; volumetric gap flow between front and bottom cylinders
+
+  (close-input-port flowrate-port)
+  (remove "flowrate")
+
+  (ti-menu-load-string "/report/surface-integrals/area-weighted-avg x=0_y=0 x=0pt05_y=0 x=0pt05_y=0pt03 x=0pt05_y=-0pt03 x=0pt5_y=0 x=0pt5_y=0pt03 x=0pt5_y=-0pt03 () y-velocity yes yvelocities")
+  (define yvelocities-port (open-input-file "yvelocities"))
+  (read yvelocities-port)
+  (read yvelocities-port)
+  (read yvelocities-port)
+  (read yvelocities-port)
+  (read yvelocities-port)
+  (read yvelocities-port)
+  (read yvelocities-port)
+  (read yvelocities-port)
+
+  (read yvelocities-port)
+  ;;;;;; coordinates origin is located at the center of the triangle formed by the three cylinders
+  (rpsetvar 'cavity-v (read yvelocities-port))  ;;;;; v velocity of x = 0, y = 0
+
+  (read yvelocities-port)
+  (rpsetvar 'jet-v (read yvelocities-port))   ;;;;; v velocity of x = 0.05m, y/D = 0
+
+  (read yvelocities-port)
+  (rpsetvar 'topshear-v (read yvelocities-port)) ;;;; v velocity of x = 0.05m, y/D = 0.03
+
+  (read yvelocities-port)
+  (rpsetvar 'botshear-v (read yvelocities-port))  ;;;; v velocity of x = 0.05m, y/D = -0.03
+
+  (read yvelocities-port)
+  (rpsetvar 'downstreamcenter-v (read yvelocities-port)) ;;;; v velocity of x = 0.5m, y/D = 0
+
+  (read yvelocities-port)
+  (rpsetvar 'downstreamtop-v (read yvelocities-port)) ;;;; v velocity of x = 0.5m, y/D = 0.03m
+
+  (read yvelocities-port)
+  (rpsetvar 'downstreambot-v (read yvelocities-port)) ;; v velocity of x = 0.5m, y/D = -0.03m
+
+  (close-input-port yvelocities-port)
+  (remove "yvelocities")
+
+)
+
+;;; this function prints results to a text file
+(define (print-file void)
+
+  ;(display "t, wf, wt, wb, u-inf, Lf, Lt, Lb, Df, Dt, Db, Tf, Tt, Tb, P, centralgap, topgap, x0y0v, xp05y0v, xp05yp03v, xp5y0v, power" output-port)
+
+  (display (rpgetvar 'flow-time) output-port) ;; flow time in second displayed in column 1 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'wf) output-port) ;; rotation of front cylinder rad/s is displayed in column 2 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'wt) output-port) ;; rotation of top cylinder rad/s is displayed in column 3 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'wb) output-port) ;; rotation of bottom cylinder rad/s is displayed in column 4 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'u-inf) output-port) ;; u-inf
+
+  (display ", " output-port)
+  (display (rpgetvar 'lift-front) output-port) ;; lift of front cylinder N/m is displayed in column 5 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'lift-top) output-port) ;; lift of top cylinder N/m is displayed in column 6 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'lift-bot) output-port) ;; lift of bottom cylinder N/m is displayed in column 7 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'drag-front) output-port) ;; drag of front cylinder N/m is displayed in column 8 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'drag-top) output-port) ;; drag of top cylinder N/m is displayed in column 9 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'drag-bot) output-port) ;; drag of bottom cylinder N/m is displayed in column 10 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'torque-front) output-port) ;; torque of front cylinder N-m/m is displayed in column 11 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'torque-top) output-port) ;; torque of top cylinder N-m/m is displayed in column 12 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'torque-bot) output-port) ;; torque of bottom cylinder N-m/m is displayed in column 13 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'centralgap) output-port) ;; volumetric flow rate through top and bottom cylinders in m^2/sec is displayed in column 14 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'topgap) output-port) ;; volumetric flow rate through front and top cylinders in m^2/sec is displayed in column 15 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'botgap) output-port) ;; volumetric flow rate through front and bottom cylinders in m^2/sec is displayed in column 16 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'cavity-v) output-port) ;; y velocity at x = 0, y = 0 in m/sec is displayed in column 17 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'jet-v) output-port) ;; y velocity at x = 0.05, y = 0 in m/sec is displayed in column 18 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'topshear-v) output-port) ;; y velocity at x = 0.05, y = 0.03 in m/sec is displayed in column 19 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'botshear-v) output-port) ;; y velocity at x = 0.05, y = -0.03 in m/sec is displayed in column 20 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'downstreamcenter-v) output-port) ;; y velocity at x = 0.5, y = 0 in m/sec is displayed in column 21 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'downstreamtop-v) output-port) ;; y velocity at x = 0.5, y = 0.03 in m/sec is displayed in column 22 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'downstreambot-v) output-port) ;; y velocity at x = 0.5, y = -0.03 in m/sec is displayed in column 22 of output file
+
+  (display ", " output-port)
+  (display (rpgetvar 'power) output-port) ;; power consumption
+
+  (newline output-port)
+
+)
+
+;;; this function deletes all case and data file except the most current ones
+(define (remove-case-data void)
+  (if (> (rpgetvar 'time-step) 2)
+    (begin
+    (remove (string-append (rpgetvar 'case-name) (number->string (- (rpgetvar 'time-step) 2)) ".cas")) ;;; delete old case file
+    (remove (string-append (rpgetvar 'case-name) (number->string (- (rpgetvar 'time-step) 2)) ".dat")) ;;; delete old data file
+    )
+    ()
+  )
+)
+
+
+;; Run simulation function
+(define (run-case 0)
+  (ti-menu-load-string (string-append "solve/set/time-step " (number->string (rpgetvar 'dt)))) ;;; setting time step
+  ;;; setting the cylinders speeds
+  (ti-menu-load-string (string-append "/define/boundary-conditions/wall " (rpgetvar 'f-id) " no no no no yes no no 0 no 0.5 no " (number->string (rpgetvar 'wf)) " " (number->string (rpgetvar 'f-cx)) " " (number->string (rpgetvar 'f-cy)) ))
+  (ti-menu-load-string (string-append "/define/boundary-conditions/wall " (rpgetvar 't-id) " no no no no yes no no 0 no 0.5 no " (number->string (rpgetvar 'wt)) " " (number->string (rpgetvar 't-cx)) " " (number->string (rpgetvar 't-cy)) ))
+  (ti-menu-load-string (string-append "/define/boundary-conditions/wall " (rpgetvar 'b-id) " no no no no yes no no 0 no 0.5 no " (number->string (rpgetvar 'wb)) " " (number->string (rpgetvar 'b-cx)) " " (number->string (rpgetvar 'b-cy)) ))
+  (ti-menu-load-string (string-append "/solve/iterate " (number->string (rpgetvar 'iteration))))
+  (ti-menu-load-string "/solve/update-physical-time")
+  (read-monitor 0)
+)
+
+;; Update motor parameter function
+(define (update-motor timestep)
+  (define file (open-input-file "motor_rotations.txt"))
+  (define (loop_to_line n)
+    (do ((x 0 (+ x 1)))  ;; initialize x = 0 and add 1 in each iteration
+      ((= x n))  ;; exit condition
+      (read file)
+      (read file)
+      (read file)
+      (read file)
+    )
+    ;; we've now reached the line that we want to read. read in 4 columns separately
+    (read file)  ;; time step
+    (define omega_front (read file))
+    (define omega_top (read file))
+    (define omega_bot (read file))
+    (rpsetvar 'wf omega_front)
+    (rpsetvar 'wt omega_top)
+    (rpsetvar 'wb omega_bot)
+  )
+  (loop_to_line timestep) ;; reads line n + 1
+  (close-input-port file)
+)
+
+;; Update u-inf function
+(define (update-u-inf timestep)
+  (define file (open-input-file "inlet_velocity.txt"))
+  (define (loop_to_line n)
+    (do ((x 0 (+ x 1)))  ;; initialize x = 0 and add 1 in each iteration
+      ((= x n))  ;; exit condition
+      (read file)
+      (read file)
+    )
+    ;; we've now reached the line that we want to read. read in 2 columns separately
+    (read file)  ;; time step
+    (define u (read file))
+    (rpsetvar 'u-inf u)
+  )
+  (loop_to_line timestep) ;; reads line n + 1
+  (close-input-port file)
+)
+
+
+;; Loop simulation (i.e. call "run case" function over and over)
+(define (loop-for-time void)
+
+  (if (< (rpgetvar 'time-step) (rpgetvar 'total-time-steps))
+    ;; if current time step is less than maximum time step, continue simulation
+
+    (begin
+
+      (if (= (rpgetvar 'perturbation?) 1)
+        (update-u-inf (rpgetvar 'time-step))
+      )
+
+      (if (= (rpgetvar 'actuate?) 1)
+        (update-motor (rpgetvar 'time-step))
+      )
+
+      (run-case 0)  ;; runs the case and reads in monitor file variables (e.g. drag)
+      (calc-P 0)
+      (print-file 0) ;; produce 'output.txt' file
+
+      (if (= (rpgetvar 'delete-data?) 1)
+        (remove-case-data 0) ;;; delete old case and data file
+        ()
+      )
+
+      (ti-menu-load-string
+        (string-append "/file/write-case-data " (rpgetvar 'case-name) (number->string (rpgetvar 'time-step)))
+      )
+
+      (if (= (rpgetvar 'write-ascii?) 1)
+        (if (= (remainder (rpgetvar 'time-step) (rpgetvar 'ascii-interval)) 0)
+          (begin
+          (ti-menu-load-string (string-append "file/export/ascii/ ascii" (number->string (rpgetvar 'time-step)) " interior-surface_body () no y-velocity x-velocity pressure () no"))
+          (remove (string-append "ascii" (number->string (- (rpgetvar 'time-step) (* (rpgetvar 'ascii-files) (rpgetvar 'ascii-interval)) ) ) ) )
+          )
+        ()
+        )
+        ()
+      )
+
+      (loop-for-time void) ;;; loop itself until it reaches maximum time step
+
+    )
+    ()
+    )
+
+  exit
+)
+;; ------------------------------------------
+(read-monitor 0)
+(loop-for-time 0)

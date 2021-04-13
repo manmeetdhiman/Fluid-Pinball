@@ -1,0 +1,43 @@
+CHECKLIST:
+    Change # of timesteps in GA/main.py and CFD/cfd.py (for GA)
+    CFD/settings.py changes:
+        Change TOTAL # of timesteps (not needed for RL)
+        Change TIMESTEP_INTERVAL
+        Change HOMEPATH
+        Change JOB_FILE to appropriate *.slurm filenames
+        Change cp command
+        Change sleep time
+    Change input parameters in worker.slurm. Change $HOME to RESULTS_FOLDER_PATH in CFD/settings.py
+    Change cluster type in worker.slurm and corresponding cluster requests.
+    dos2unix all slurm files
+    Check that the fluent.slurm file has job name entry on 3rd line of file. This is because this job name is changed by the code.
+    Check in .jou file to make sure that actuation/perturbation is turned on as required.
+    Check each *.slurm file is requesting the appropriate resources/mem (e.g. don't need CPU2019 for extract_velocity)
+    Check RL/GA settings
+    Ensure RL toplevel.slurm is multicore! (e.g. 5 iterations/episodes = 5 cores)
+    Change toplevel.slurm name, resources, etc.
+    Change worker job names in submit_workers.py
+    For the perturbed runs, make sure to use steady state TimeStep-0.cas
+        from the perturbation simulations. (Also change to (time-step 0) in those files)
+
+
+sim_files/ folder required files:
+    *.jou (to control fluent)
+    *.slurm (fluent)
+    starting TimeStep* (e.g. TimeStep-0.cas/dat)
+
+NOTES:
+Motor_rotations.txt and inlet_velocity txt files will be generated however they will not
+    be used unless the actuation flag and perturbation flag is turned on in the *.jou file
+
+IF YOU CHANGE motor_rotations.txt, inlet_velocity.txt, and t_start.txt filenames, BE SURE TO CHANGE
+THOSE NAMES IN THE .JOU FILE AS WELL!
+
+The cwd where the *.slurm file is submitted is where the *.out files will go.
+e.g. cwd = Results_GA/ but slurm file in Results_GA/individual-0-0-920/, 
+     *.out file will go into Results_GA/ not into individual-0-0-920/ folder.
+Only works for ascii output intervals of 5, 10 currently.
+If extending a simulation (10k to 30k timesteps), make sure to also extend motor_parameters.txt. and inlet_velocity.txt.
+
+toplevel.py and CFD/ folder need to be on the same level.
+The assignment of cost in SOGA/functions.py is very important. Make sure cost is not assigned to the wrong individual.
