@@ -20,7 +20,6 @@ CHECKLIST:
     For the perturbed runs, make sure to use steady state TimeStep-0.cas
         from the perturbation simulations. (Also change to (time-step 0) in those files)
 
-Change U_INF in settings.py when perturbation?
 
 sim_files/ folder required files:
     *.jou (to control fluent)
