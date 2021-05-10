@@ -11,9 +11,6 @@ import multiprocessing as mp
 import os
 import CFD.cfd
 
-
-# Actor network class created below
-
 class Actor(nn.Module):
 
     # Initializing the NN for the actor
@@ -29,7 +26,7 @@ class Actor(nn.Module):
         self.mu_layer = nn.Linear(350, out_dim)
         self.log_std_layer = nn.Linear(350, out_dim)
 
-    # Defining the activation function for the actor NN
+    # Defining the forward pass for the actor NN
 
     def forward(self, state: torch.Tensor):
         x = torch.tanh(self.hidden_one(state))
@@ -57,7 +54,8 @@ class Critic(nn.Module):
         self.hidden_two = nn.Linear(350, 350)
         self.out = nn.Linear(350, 1)
 
-    # Defining the activation function for the critic NN
+    # Defining the forward pass for the critic NN
+    
     def forward(self, state: torch.Tensor) -> torch.Tensor:
         x = F.relu(self.hidden_one(state))
         x = F.relu(self.hidden_two(x))
@@ -71,29 +69,33 @@ class Critic(nn.Module):
 class PPO_Agent(object):
 
     # We basically pass and initialize all the parameters here
-    def __init__(self, obs_dim=6, act_dim=12, gamma=0.99, lamda=0.10,
-                 entropy_coef=0.001, epsilon=0.35, value_range=0.9,
-                 num_epochs=15, batch_size=150, actor_lr=1e-4, critic_lr=3.5e-4):
+    
+    def __init__(self, obs_dim=3, act_dim=12, gamma=0.99, lamda=0.10,
+                 entropy_coef=0.001, epsilon=0.25, num_epochs=10, batch_size=225, 
+                 actor_lr=1e-4, critic_lr=3.5e-4):
 
+        # Hyperparameters for the RL 
+        
         self.gamma = gamma
         self.lamda = lamda
         self.entropy_coef = entropy_coef
         self.epsilon = epsilon
-        self.value_range = value_range
-
         self.num_epochs = num_epochs
         self.batch_size = batch_size
-
         self.obs_dim = obs_dim
         self.act_dim = act_dim
         self.actor_lr = actor_lr
         self.critic_lr = critic_lr
 
+        #Creates the actor and critic NN 
+        
         self.actor = Actor(self.obs_dim, self.act_dim)
         self.critic = Critic(self.obs_dim)
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=self.actor_lr)
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=self.critic_lr)
 
+        # Stores all the data from the environment in a policy
+        
         self.states = []
         self.actions = []
         self.rewards = []
@@ -106,7 +108,8 @@ class PPO_Agent(object):
 
         self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-    # Reset the parameters after every episode
+    # Reset the memory after every policy update
+    
     def clear_memory(self):
 
         self.states = []
@@ -116,6 +119,8 @@ class PPO_Agent(object):
         self.log_probs = []
         self.values = []
         self.next_states = []
+        
+    # Calculates the advantage of each action using the value function
 
     def get_gae(self, rewards: list, values: list, is_terminals: list, gamma: float, lamda: float, ):
 
@@ -130,7 +135,9 @@ class PPO_Agent(object):
 
         return returns
 
-    # Based on the trajectory, actions and probability distribution is generated here
+    # Selects random data from the memory to use in the policy update. If batch size equals the 
+    # memory size (num actions * num episodes) then it will use all the data together for an update. 
+    
     def trajectories_data_generator(self, states: torch.Tensor, actions: torch.Tensor,
                                     returns: torch.Tensor, log_probs: torch.Tensor,
                                     values: torch.Tensor, advantages: torch.Tensor,
@@ -141,7 +148,9 @@ class PPO_Agent(object):
                 ids = np.random.choice(data_len, batch_size)
                 yield states[ids, :], actions[ids], returns[ids], log_probs[ids], values[ids], advantages[ids]
 
-    # Based on the state, we get the action from the probability distribution
+    # Based on the state, we get the action from actor NN
+    # The actor NN outputs the probability distribution for every state from which an action is sampled from
+    
     def _get_action(self, state):
 
         state = torch.FloatTensor(state).to(self.device)
@@ -150,7 +159,8 @@ class PPO_Agent(object):
 
         return action, value, dist, mu, std
 
-    # We update the weights of the actor and critic NNs based on the rewards, loss, and other parameters
+    # We update the weights of the actor and critic NN
+    
     def _update_weights(self, lr_manual_bool, actor_lr, critic_lr):
 
         self.rewards = torch.tensor(self.rewards).float()
@@ -176,6 +186,7 @@ class PPO_Agent(object):
         for state, action, return_, old_log_prob, old_value, advantage in self.trajectories_data_generator(
                 states=states, actions=actions, returns=returns, log_probs=log_probs, values=values,
                 advantages=advantages, batch_size=self.batch_size, num_epochs=self.num_epochs, ):
+            
             # compute ratio (pi_theta / pi_theta__old)
             _, dist, __, ___ = self.actor(state)
             cur_log_prob = dist.log_prob(action)
@@ -234,7 +245,9 @@ class PPO_Agent(object):
         self.actor.eval()
 
 
-# This is Joel's function for the PI motor
+# This is the PI control
+# Motor data generated from the RL is passed through this before being passed to the CFD
+
 def PI_Motor(w_des_two, tsteps, dt, w0):
     w_des_one = np.zeros(50)
     for i in range(len(w_des_one)):
@@ -338,17 +351,19 @@ def PI_Motor(w_des_two, tsteps, dt, w0):
 
 
 # This function is run for performing the cubic spline interpolations
+
 def Spline(times, rotations, des_times, k=3):
     spline = interpolate.splrep(times, rotations)
     des_rotations = interpolate.splev(des_times, spline)
     return des_rotations
 
 
-# This class is set up for the Episodes/Iterations. The magic behind every episode occurs here
+# This class is set up to run the episodes. 
+
 class Iteration():
-    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=15, dur_action_min=1.00, dur_action_one_add=0.50,
-                 CFD_timestep=5e-4, mot_timestep=5e-4, dur_ramps=0.05, free_stream_vel=1.5, sampling_periods=0.9,
-                 CFD_timestep_spacing=5):
+    def __init__(self, iteration_ID=1, shedding_freq=8.42, num_actions=15, dur_action_min=2.00, 
+                 dur_action_one_add=0.00, CFD_timestep=5e-4, dur_ramps=0.05, free_stream_vel=1.5, 
+                 sampling_periods=1.0, CFD_timestep_spacing=5):
 
         self.iteration_ID = iteration_ID
         self.shedding_freq = shedding_freq
@@ -356,7 +371,6 @@ class Iteration():
         self.dur_action_min = dur_action_min
         self.dur_action_one_add = dur_action_one_add
         self.CFD_timestep = CFD_timestep
-        self.mot_timestep = mot_timestep
         self.dur_ramps = dur_ramps
         self.free_stream_vel = free_stream_vel
         self.sampling_periods = sampling_periods
@@ -385,33 +399,27 @@ class Iteration():
         self.mid_sens_values = []
         self.bot_sens_values = []
 
-        self.state_front_cyl_offset = [0,]
+        self.state_front_cyl_offset = []
         self.state_front_cyl_amp = []
         self.state_front_cyl_phase = []
         self.state_front_cyl_freq = []
 
-        self.state_top_cyl_offset = [0,]
+        self.state_top_cyl_offset = []
         self.state_top_cyl_amp = []
         self.state_top_cyl_phase = []
         self.state_top_cyl_freq = []
 
-        self.state_bot_cyl_offset = [0,]
+        self.state_bot_cyl_offset = []
         self.state_bot_cyl_amp = []
         self.state_bot_cyl_phase = []
         self.state_bot_cyl_freq = []
         
-        self.mot_timesteps_actions=[]
         self.CFD_timesteps_actions=[]
 
         self.action_counter = 0
         self.time_step_start = 1
 
         self.shedding_period = 1 / self.shedding_freq
-
-        self.mot_timesteps_period = int(np.ceil(self.shedding_period / self.mot_timestep))
-        self.mot_timesteps_action_min = int(np.ceil(self.mot_timesteps_period * self.dur_action_min))
-        self.mot_timesteps_action_one_add = int(np.ceil(self.mot_timesteps_period * self.dur_action_one_add))
-        self.mot_timesteps_ramp = int(np.ceil(self.mot_timesteps_period * self.dur_ramps))
 
         self.CFD_timesteps_period = int(np.ceil(self.shedding_period / self.CFD_timestep))
         self.CFD_timesteps_action_min = int(np.ceil(self.CFD_timesteps_period * self.dur_action_min))
@@ -428,19 +436,14 @@ class Iteration():
         mid_sens_state = 5.0 * mid_sens_var - 1.0
         bot_sens_state = 5.0 * bot_sens_var - 1.0
 
-        front_mot_state_offset = 0.00
-        top_mot_state_offset = 0.00
-        bot_mot_state_offset = 0.00
-
-        state = np.array([top_sens_state, mid_sens_state, bot_sens_state,
-                          front_mot_state_offset, top_mot_state_offset, bot_mot_state_offset])
+        state = np.array([top_sens_state, mid_sens_state, bot_sens_state])
         return state
 
     # The reward is calculated here using the J_fluc and J_act
     def calculate_reward(self):
         
-        if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing * 1.66666):
-            sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing * 1.66666)
+        if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing):
+            sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing)
         else:
             sampling_timesteps = int(len(self.top_sens_values))
 
@@ -480,16 +483,10 @@ class Iteration():
     # The state of the PPO agent in the environment is calculated which is fed to get the action
     def calculate_state(self):
         
-        if self.action_counter==1:
-            if len(self.top_sens_values) >= ((self.CFD_timesteps_actions[-1]-self.CFD_timesteps_action_one_add) * self.sampling_periods / self.CFD_timestep_spacing):
-                sampling_timesteps = int((self.CFD_timesteps_actions[-1]-self.CFD_timesteps_action_one_add) * self.sampling_periods / self.CFD_timestep_spacing)
-            else:
-                sampling_timesteps = int(len(self.top_sens_values))
+        if len(self.top_sens_values) >= (self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing):
+            sampling_timesteps = int(self.CFD_timesteps_period * self.sampling_periods / self.CFD_timestep_spacing)
         else:
-            if len(self.top_sens_values) >= (self.CFD_timesteps_actions[-1] * self.sampling_periods / self.CFD_timestep_spacing):
-                sampling_timesteps = int(self.CFD_timesteps_actions[-1] * self.sampling_periods / self.CFD_timestep_spacing)
-            else:
-                sampling_timesteps = int(len(self.top_sens_values))
+            sampling_timesteps = int(len(self.top_sens_values))
 
         top_sens_var = np.var(self.top_sens_values[-sampling_timesteps:])
         mid_sens_var = np.var(self.mid_sens_values[-sampling_timesteps:])
@@ -499,48 +496,19 @@ class Iteration():
         mid_sens_state = 5.0 * mid_sens_var - 1.0
         bot_sens_state = 5.0 * bot_sens_var - 1.0
         
-        if top_sens_state >= 2.0:
-            top_sens_state=2.0
-        if mid_sens_state >= 2.0:
-            mid_sens_state=2.0
-        if bot_sens_state >= 2.0:
-            bot_sens_state=2.0
+        if top_sens_state >= 1.5:
+            top_sens_state=1.5
+        if mid_sens_state >= 1.5:
+            mid_sens_state=1.5
+        if bot_sens_state >= 1.5:
+            bot_sens_state=1.5
 
-        front_mot_state_offset = self.state_front_cyl_offset[-1]
-        top_mot_state_offset = self.state_top_cyl_offset[-1]
-        bot_mot_state_offset = self.state_bot_cyl_offset[-1]
-
-        state = np.array([top_sens_state, mid_sens_state, bot_sens_state,
-                          front_mot_state_offset, top_mot_state_offset, bot_mot_state_offset])
+        state = np.array([top_sens_state, mid_sens_state, bot_sens_state])
         return state
 
-    # This function is probably not necessary for us but it basically checks if the CFD timesteps and motor timesteps
-    # match. If not, it matches them
-    def convert_timestep_array(self, times_A, array_A, timestep_A):
-        
-        if timestep_A == self.mot_timestep:
-            timestep_B = self.CFD_timestep
-            times_B = np.zeros(self.CFD_timesteps_actions[-1])
-            array_B = np.zeros(len(times_B))
-        else:
-            timestep_B = self.mot_timestep
-            times_B = np.zeros(self.mot_timesteps_actions[-1])
-            array_B = np.zeros(len(times_B))
 
-        for i in range(len(times_B)):
-            times_B[i] = i * timestep_B
-            for j in range(len(times_A)):
-                if times_A[j] >= times_B[i]:
-                    array_B[i] = array_A[j]
-                    break
-                else:
-                    if i > 0:
-                        array_B[i] = array_B[i - 1]
-
-        return array_B
-
-    # This function calculates the ramp required based on the previous actions. Limits are in-built as well. It returns
-    # the required motor data
+    # This function uses the action generated by the RL to output the motor data for the CFD. 
+    
     def calculate_mot_data(self, action):
         
         print(f'Calculating motor data iteration{self.iteration_ID}-action{action}')
@@ -548,69 +516,55 @@ class Iteration():
         action_clipped = np.zeros(len(action))
 
         for i in range(len(action_clipped)):
-            if action[i] > 3.0:
-                action_clipped[i] = 3.0
-            elif action[i] < -3.0:
-                action_clipped[i] = -3.0
+            if action[i] > 1.75:
+                action_clipped[i] = 1.75
+            elif action[i] < -1.75:
+                action_clipped[i] = -1.75
             else:
                 action_clipped[i] = action[i]
+                
+        self.state_front_cyl_offset.append(action_clipped[0]/ 1.75)
+        self.state_front_cyl_amp.append(action_clipped[1] / 1.75)
+        self.state_front_cyl_phase.append(action_clipped[2] / 1.75)
+        self.state_front_cyl_freq.append(action_clipped[3] / 1.75)
 
-        self.state_front_cyl_amp.append(action_clipped[1] / 3.0)
-        self.state_front_cyl_phase.append(action_clipped[2] / 3.0)
-        self.state_front_cyl_freq.append(action_clipped[3] / 3.0)
-
-        self.state_top_cyl_amp.append(action_clipped[5] / 3.0)
-        self.state_top_cyl_phase.append(action_clipped[6] / 3.0)
-        self.state_top_cyl_freq.append(action_clipped[7] / 3.0)
-
-        self.state_bot_cyl_amp.append(action_clipped[9] / 3.0)
-        self.state_bot_cyl_phase.append(action_clipped[10] / 3.0)
-        self.state_bot_cyl_freq.append(action_clipped[11] / 3.0)
+        self.state_top_cyl_offset.append(action_clipped[4]/ 1.75)
+        self.state_top_cyl_amp.append(action_clipped[5] / 1.75)
+        self.state_top_cyl_phase.append(action_clipped[6] / 1.75)
+        self.state_top_cyl_freq.append(action_clipped[7] / 1.75)
         
-        front_cyl_amp = action_clipped[1] * 333
-        front_cyl_phase = action_clipped[2] * 1.046
+        self.state_bot_cyl_offset.append(action_clipped[8]/ 1.75)
+        self.state_bot_cyl_amp.append(action_clipped[9] / 1.75)
+        self.state_bot_cyl_phase.append(action_clipped[10] / 1.75)
+        self.state_bot_cyl_freq.append(action_clipped[11] / 1.75)
         
-        if action_clipped[3] <=0.5629:
+        front_cyl_offset = action_clipped[0] * 570
+        front_cyl_amp = action_clipped[1] * 570
+        front_cyl_phase = action_clipped[2] * 1.79
+        
+        if action_clipped[3] <=0.329:
             front_cyl_freq=0.0
         else:
-            front_cyl_freq=-1.4033*action_clipped[3]+9.2099
-
-        top_cyl_amp = action_clipped[5] * 333
-        top_cyl_phase = action_clipped[6] * 1.046
+            front_cyl_freq=-2.405*action_clipped[3]+9.21
         
-        if action_clipped[7] <=0.5629:
+        top_cyl_offset = action_clipped[4] * 570
+        top_cyl_amp = action_clipped[5] * 570
+        top_cyl_phase = action_clipped[6] * 1.79
+        
+        if action_clipped[7] <=0.329:
             top_cyl_freq=0.0
         else:
-            top_cyl_freq=-1.4033*action_clipped[7]+9.2099
-
-        bot_cyl_amp = action_clipped[9] * 333
-        bot_cyl_phase = action_clipped[10] * 1.046
+            top_cyl_freq=-2.405*action_clipped[7]+9.21
         
-        if action_clipped[11] <=0.5629:
+        bot_cyl_offset = action_clipped[8] * 570
+        bot_cyl_amp = action_clipped[9] * 570
+        bot_cyl_phase = action_clipped[10] * 1.79
+        
+        if action_clipped[11] <=0.329:
             bot_cyl_freq=0.0
         else:
-            bot_cyl_freq=-1.4033*action_clipped[11]+9.2099
-        
-        front_cyl_offset_ramp = action_clipped[0] * 150
-        top_cyl_offset_ramp = action_clipped[4] * 150
-        bot_cyl_offset_ramp = action_clipped[8] * 150
-        
-        front_cyl_offset=front_cyl_offset_ramp + (self.state_front_cyl_offset[-1]*1000)
-        top_cyl_offset=top_cyl_offset_ramp + (self.state_top_cyl_offset[-1]*1000)
-        bot_cyl_offset=bot_cyl_offset_ramp + (self.state_bot_cyl_offset[-1]*1000)
-        
-        if front_cyl_offset > 1000:
-            front_cyl_offset=1000
-        if front_cyl_offset <-1000:
-            front_cyl_offset=-1000
-        if top_cyl_offset > 1000:
-            top_cyl_offset=1000
-        if top_cyl_offset <-1000:
-            top_cyl_offset=-1000
-        if bot_cyl_offset > 1000:
-            bot_cyl_offset=1000
-        if bot_cyl_offset <-1000:
-            bot_cyl_offset=-1000
+            bot_cyl_freq=-2.405*action_clipped[11]+9.21
+            
             
         if front_cyl_freq <= 5.0:
             front_cyl_freq = 0.0
@@ -624,95 +578,87 @@ class Iteration():
             bot_cyl_freq = 0.0
             bot_cyl_phase=0.0
             bot_cyl_amp=0.0
-        
-        self.state_front_cyl_offset.append(front_cyl_offset/1000)
-        self.state_top_cyl_offset.append(top_cyl_offset/1000)
-        self.state_bot_cyl_offset.append(bot_cyl_offset/1000)
+            
+            
+        CFD_timesteps_action=self.CFD_timesteps_action_min
 
-        if front_cyl_freq <= 5.0 and top_cyl_freq <= 5.0 and bot_cyl_freq <= 5.0:
-            if self.action_counter==1:
-                CFD_timesteps_action=self.CFD_timesteps_action_min+self.CFD_timesteps_action_one_add
-            else:
-                CFD_timesteps_action=self.CFD_timesteps_action_min
-        else:
-            min_cyl_freq = self.shedding_freq
-            if front_cyl_freq > 5.0 and front_cyl_freq < min_cyl_freq:
-                min_cyl_freq=front_cyl_freq
-            if top_cyl_freq > 5.0 and top_cyl_freq < min_cyl_freq:
-                min_cyl_freq=top_cyl_freq
-            if bot_cyl_freq > 5.0 and bot_cyl_freq < min_cyl_freq:
-                min_cyl_freq=bot_cyl_freq
+        if front_cyl_freq > 5.0:
+            front_cyl_timesteps_action = self.CFD_timesteps_period*self.shedding_freq/front_cyl_freq
+            
+            if front_cyl_timesteps_action > CFD_timesteps_action:
+                CFD_timestep_action=front_cyl_timesteps
+        
+        if top_cyl_freq > 5.0:
+            top_cyl_timesteps_action = self.CFD_timesteps_period*self.shedding_freq/top_cyl_freq
+            
+            if top_cyl_timesteps_action > CFD_timesteps_action:
+                CFD_timestep_action=top_cyl_timesteps
+        
+        if bot_cyl_freq > 5.0:
+            bot_cyl_timesteps_action = self.CFD_timesteps_period*self.shedding_freq/bot_cyl_freq
+            
+            if bot_cyl_timesteps_action > CFD_timesteps_action:
+                CFD_timestep_action=bot_cyl_timesteps
              
-            if self.action_counter==1:
-                CFD_timesteps_action=self.CFD_timesteps_period*(self.shedding_freq/min_cyl_freq)+self.CFD_timesteps_action_one_add
-            else:
-                CFD_timesteps_action=self.CFD_timesteps_period*(self.shedding_freq/min_cyl_freq)
-                
         CFD_timesteps_action=int(CFD_timesteps_action)
         
         if (CFD_timesteps_action % self.CFD_timestep_spacing) != 0:
             CFD_timesteps_action=CFD_timesteps_action + self.CFD_timestep_spacing - (CFD_timesteps_action % self.CFD_timestep_spacing)
         
-        mot_timesteps_action=int(CFD_timesteps_action*self.mot_timestep/self.CFD_timestep)
-                                                                                    
-        self.mot_timesteps_actions.append(mot_timesteps_action)
         self.CFD_timesteps_actions.append(CFD_timesteps_action)
         
-        des_times = np.zeros(self.mot_timesteps_actions[-1])
-
+        des_times = np.zeros(self.CFD_timesteps_actions[-1])
+        
         for i in range(len(des_times)):
-            des_times[i] = self.mot_timestep * i
+            des_times[i] = self.CFD_timestep * i
 
-        times = np.zeros(10 + self.mot_timesteps_actions[-1])
+        times = np.zeros(10 + self.CFD_timesteps_actions[-1])
 
-        front_cyl_RPS_temp_mot = np.zeros(len(times))
-        top_cyl_RPS_temp_mot = np.zeros(len(times))
-        bot_cyl_RPS_temp_mot = np.zeros(len(times))
+        front_cyl_RPS_temp = np.zeros(len(times))
+        top_cyl_RPS_temp = np.zeros(len(times))
+        bot_cyl_RPS_temp = np.zeros(len(times))
 
         for i in range(len(times)):
             if i < 5 and len(self.front_cyl_RPS_PI) > 5:
-                times[i] = self.mot_timestep * (-5 + i)
-                front_cyl_RPS_temp_mot[i] = self.front_cyl_RPS_PI[-5 + i]
-                top_cyl_RPS_temp_mot[i] = self.top_cyl_RPS_PI[-5 + i]
-                bot_cyl_RPS_temp_mot[i] = self.bot_cyl_RPS_PI[-5 + i]
+                times[i] = self.CFD_timestep * (-5 + i)
+                front_cyl_RPS_temp[i] = self.front_cyl_RPS_PI[-5 + i]
+                top_cyl_RPS_temp[i] = self.top_cyl_RPS_PI[-5 + i]
+                bot_cyl_RPS_temp[i] = self.bot_cyl_RPS_PI[-5 + i]
             elif i < 5 and len(self.front_cyl_RPS_PI) <= 5:
-                times[i] = self.mot_timestep * (-5 + i)
-                front_cyl_RPS_temp_mot[i] = 0
-                top_cyl_RPS_temp_mot[i] = 0
-                bot_cyl_RPS_temp_mot[i] = 0
+                times[i] = self.CFD_timestep * (-5 + i)
+                front_cyl_RPS_temp[i] = 0
+                top_cyl_RPS_temp[i] = 0
+                bot_cyl_RPS_temp[i] = 0
             elif i >= 5:
-                times[i] = self.mot_timestep * self.mot_timesteps_ramp + (i - 5) * self.mot_timestep
-                front_cyl_RPS_temp_mot[i] = front_cyl_offset + front_cyl_amp * np.sin(
-                    2 * 3.14 * front_cyl_freq * (i - 5) * self.mot_timestep + front_cyl_phase)
-                top_cyl_RPS_temp_mot[i] = top_cyl_offset + top_cyl_amp * np.sin(
-                    2 * 3.14 * top_cyl_freq * (i - 5) * self.mot_timestep + top_cyl_phase)
-                bot_cyl_RPS_temp_mot[i] = bot_cyl_offset + bot_cyl_amp * np.sin(
-                    2 * 3.14 * bot_cyl_freq * (i - 5) * self.mot_timestep + bot_cyl_phase)
+                times[i] = self.CFD_timestep * self.CFD_timesteps_ramp + (i - 5) * self.CFD_timestep
+                front_cyl_RPS_temp[i] = front_cyl_offset + front_cyl_amp * np.sin(
+                    2 * 3.14 * front_cyl_freq * (i - 5) * self.CFD_timestep + front_cyl_phase)
+                top_cyl_RPS_temp[i] = top_cyl_offset + top_cyl_amp * np.sin(
+                    2 * 3.14 * top_cyl_freq * (i - 5) * self.CFD_timestep + top_cyl_phase)
+                bot_cyl_RPS_temp[i] = bot_cyl_offset + bot_cyl_amp * np.sin(
+                    2 * 3.14 * bot_cyl_freq * (i - 5) * self.CFD_timestep + bot_cyl_phase)
 
-                if front_cyl_RPS_temp_mot[i] > 1000:
-                    front_cyl_RPS_temp_mot[i] = 1000
-                if front_cyl_RPS_temp_mot[i] < -1000:
-                    front_cyl_RPS_temp_mot[i] = -1000
-                if top_cyl_RPS_temp_mot[i] > 1000:
-                    top_cyl_RPS_temp_mot[i] = 1000
-                if top_cyl_RPS_temp_mot[i] < -1000:
-                    top_cyl_RPS_temp_mot[i] = -1000
-                if bot_cyl_RPS_temp_mot[i] > 1000:
-                    bot_cyl_RPS_temp_mot[i] = 1000
-                if bot_cyl_RPS_temp_mot[i] < -1000:
-                    bot_cyl_RPS_temp_mot[i] = -1000
+                if front_cyl_RPS_temp[i] > 1000:
+                    front_cyl_RPS_temp[i] = 1000
+                if front_cyl_RPS_temp[i] < -1000:
+                    front_cyl_RPS_temp[i] = -1000
+                if top_cyl_RPS_temp[i] > 1000:
+                    top_cyl_RPS_temp[i] = 1000
+                if top_cyl_RPS_temp[i] < -1000:
+                    top_cyl_RPS_temp[i] = -1000
+                if bot_cyl_RPS_temp[i] > 1000:
+                    bot_cyl_RPS_temp[i] = 1000
+                if bot_cyl_RPS_temp[i] < -1000:
+                    bot_cyl_RPS_temp[i] = -1000
 
-        front_cyl_RPS_temp_mot = Spline(times, front_cyl_RPS_temp_mot, des_times)
-        top_cyl_RPS_temp_mot = Spline(times, top_cyl_RPS_temp_mot, des_times)
-        bot_cyl_RPS_temp_mot = Spline(times, bot_cyl_RPS_temp_mot, des_times)
+        front_cyl_RPS_temp = Spline(times, front_cyl_RPS_temp, des_times)
+        top_cyl_RPS_temp = Spline(times, top_cyl_RPS_temp, des_times)
+        bot_cyl_RPS_temp = Spline(times, bot_cyl_RPS_temp, des_times)
 
-        front_cyl_RPS_temp_CFD = self.convert_timestep_array(des_times, front_cyl_RPS_temp_mot, self.mot_timestep)
-        top_cyl_RPS_temp_CFD = self.convert_timestep_array(des_times, top_cyl_RPS_temp_mot, self.mot_timestep)
-        bot_cyl_RPS_temp_CFD = self.convert_timestep_array(des_times, bot_cyl_RPS_temp_mot, self.mot_timestep)
 
-        self.front_cyl_RPS.extend(front_cyl_RPS_temp_CFD)
-        self.top_cyl_RPS.extend(top_cyl_RPS_temp_CFD)
-        self.bot_cyl_RPS.extend(bot_cyl_RPS_temp_CFD)
+        self.front_cyl_RPS.extend(front_cyl_RPS_temp)
+        self.top_cyl_RPS.extend(top_cyl_RPS_temp)
+        self.bot_cyl_RPS.extend(bot_cyl_RPS_temp)
 
         if len(self.front_cyl_RPS_PI) == 0:
             front_w0 = 0
@@ -723,24 +669,21 @@ class Iteration():
             top_w0 = self.top_cyl_RPS_PI[-1]
             bot_w0 = self.bot_cyl_RPS_PI[-1]
 
-        front_cyl_RPS_temp_mot = PI_Motor(front_cyl_RPS_temp_mot, self.mot_timesteps_actions[-1], self.mot_timestep, front_w0)
-        top_cyl_RPS_temp_mot = PI_Motor(top_cyl_RPS_temp_mot, self.mot_timesteps_actions[-1], self.mot_timestep, top_w0)
-        bot_cyl_RPS_temp_mot = PI_Motor(bot_cyl_RPS_temp_mot, self.mot_timesteps_actions[-1], self.mot_timestep, bot_w0)
+        front_cyl_RPS_temp = PI_Motor(front_cyl_RPS_temp, self.CFD_timesteps_actions[-1], self.CFD_timestep, front_w0)
+        top_cyl_RPS_temp = PI_Motor(top_cyl_RPS_temp, self.CFD_timesteps_actions[-1], self.CFD_timestep, top_w0)
+        bot_cyl_RPS_temp = PI_Motor(bot_cyl_RPS_temp, self.CFD_timesteps_actions[-1], self.CFD_timestep, bot_w0)
 
-        front_cyl_RPS_temp_CFD = self.convert_timestep_array(des_times, front_cyl_RPS_temp_mot, self.mot_timestep)
-        top_cyl_RPS_temp_CFD = self.convert_timestep_array(des_times, top_cyl_RPS_temp_mot, self.mot_timestep)
-        bot_cyl_RPS_temp_CFD = self.convert_timestep_array(des_times, bot_cyl_RPS_temp_mot, self.mot_timestep)
+        self.front_cyl_RPS_PI.extend(front_cyl_RPS_temp)
+        self.top_cyl_RPS_PI.extend(top_cyl_RPS_temp)
+        self.bot_cyl_RPS_PI.extend(bot_cyl_RPS_temp)
 
-        self.front_cyl_RPS_PI.extend(front_cyl_RPS_temp_CFD)
-        self.top_cyl_RPS_PI.extend(top_cyl_RPS_temp_CFD)
-        self.bot_cyl_RPS_PI.extend(bot_cyl_RPS_temp_CFD)
-
-        mot_data = {'revolutions': [front_cyl_RPS_temp_CFD, top_cyl_RPS_temp_CFD, bot_cyl_RPS_temp_CFD]
+        mot_data = {'revolutions': [front_cyl_RPS_temp, top_cyl_RPS_temp, bot_cyl_RPS_temp]
             , 'freq': [0, 0, 0], 'amp': [0, 0, 0], 'offset': [0, 0, 0], 'phase': [0, 0, 0]}
 
         return mot_data
-
+    
     # This function runs the iterations/episodes basically
+    
     def run_iteration(self):
         state = self.reset_state()
         for actions in range(num_actions):
@@ -868,8 +811,7 @@ class Iteration():
                              'bot_cyl_RPS': self.bot_cyl_RPS, 'front_cyl_RPS_PI': self.front_cyl_RPS_PI,
                              'top_cyl_RPS_PI': self.top_cyl_RPS_PI, 'bot_cyl_RPS_PI': self.bot_cyl_RPS_PI,
                              'top_sens_values': self.top_sens_values, 'mid_sens_values': self.mid_sens_values,
-                             'bot_sens_values': self.bot_sens_values, 'mot_timesteps_actions': self.mot_timesteps_actions,
-                             'CFD_timesteps_actions':self.CFD_timesteps_actions}
+                             'bot_sens_values': self.bot_sens_values, 'CFD_timesteps_actions':self.CFD_timesteps_actions}
 
         filename = 'data_iteration_' + str(self.iteration_ID) + '.pickle'
         with open(filename, 'wb') as handle:
@@ -898,17 +840,18 @@ def _run_action(iteration):
 
 
 ##################     MAIN LOOP BEGINS HERE     ###############################
+
 # We define the parameters for both actor and critic NNs
-obs_dim = 6
+
+obs_dim = 3
 act_dim = 12
 gamma = 0.99
 lamda = 0.10
 entropy_coef = 0.001
-epsilon = 0.35
-value_range = 0.9
-num_updates = 5
-num_epochs = 5
-batch_size = 150
+epsilon = 0.25
+num_updates = 1
+num_epochs = 10
+batch_size = 225
 actor_lr = 1e-4
 critic_lr = 1e-4
 lr_manual_bool = True
@@ -921,22 +864,22 @@ total_actor_losses = []
 
 # We feed the NN parameters to the PPO agent class
 ppo_agent = PPO_Agent(obs_dim=obs_dim, act_dim=act_dim, gamma=gamma, lamda=lamda, entropy_coef=entropy_coef,
-                      epsilon=epsilon, value_range=value_range, num_epochs=num_epochs, batch_size=batch_size,
+                      epsilon=epsilon, num_epochs=num_epochs, batch_size=batch_size,
                       actor_lr=actor_lr, critic_lr=critic_lr)
 
 # We define the required CFD and RL defining parameters for the PPO agent here
+
 shedding_freq = 8.42
-dur_action_min = 1.00
-dur_action_one_add = 0.50
+dur_action_min = 2.00
+dur_action_one_add = 0.00
 CFD_timestep = 5e-4
-mot_timestep = 5e-4
 CFD_timestep_spacing = 5
 dur_ramps = 0.05
 num_actions = 15
 num_policies = 40
-num_iterations = 10
+num_iterations = 15
 free_stream_vel = 1.5
-sampling_periods = 0.90
+sampling_periods = 1.00
 load_weights = False
 policy_num_load_weights = 0
 
@@ -960,8 +903,7 @@ def main():
             iteration_ID = num_iterations * policy + iteration + 1
             Iterations.append(Iteration(iteration_ID=iteration_ID, shedding_freq=shedding_freq, num_actions=num_actions,
                                         dur_action_min=dur_action_min, dur_action_one_add=dur_action_one_add,
-                                        CFD_timestep=CFD_timestep,
-                                        mot_timestep=mot_timestep, dur_ramps=dur_ramps, free_stream_vel=free_stream_vel,
+                                        CFD_timestep=CFD_timestep, dur_ramps=dur_ramps, free_stream_vel=free_stream_vel,
                                         sampling_periods=sampling_periods, CFD_timestep_spacing=CFD_timestep_spacing))
 
         if os.path.exists(f'policy-{policy + 1}'):
@@ -997,7 +939,6 @@ def main():
             ppo_agent.rewards.extend(Iterations[iteration].rewards)
             ppo_agent.is_terminals.extend(Iterations[iteration].is_terminals)
             ppo_agent.log_probs.extend(Iterations[iteration].log_probs)
-            ppo_agent.values.extend(Iterations[iteration].values)
             ppo_agent.next_states.extend(Iterations[iteration].next_states)
 
         for update in range(num_updates):
@@ -1029,3 +970,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
