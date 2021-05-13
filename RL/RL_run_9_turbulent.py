@@ -533,18 +533,22 @@ class Iteration():
             else:
                 action_clipped[i] = action[i]
 
+        self.state_front_cyl_offset.append(action_clipped[0]/ 1.75)
         self.state_front_cyl_amp.append(action_clipped[1] / 1.75)
         self.state_front_cyl_phase.append(action_clipped[2] / 1.75)
         self.state_front_cyl_freq.append(action_clipped[3] / 1.75)
 
+        self.state_top_cyl_offset.append(action_clipped[4]/ 1.75)
         self.state_top_cyl_amp.append(action_clipped[5] / 1.75)
         self.state_top_cyl_phase.append(action_clipped[6] / 1.75)
         self.state_top_cyl_freq.append(action_clipped[7] / 1.75)
 
+        self.state_bot_cyl_offset.append(action_clipped[8]/ 1.75)
         self.state_bot_cyl_amp.append(action_clipped[9] / 1.75)
         self.state_bot_cyl_phase.append(action_clipped[10] / 1.75)
         self.state_bot_cyl_freq.append(action_clipped[11] / 1.75)
         
+        front_cyl_offset = action_clipped[0] * 570
         front_cyl_amp = action_clipped[1] * 570
         front_cyl_phase = action_clipped[2] * 1.79
         
@@ -553,6 +557,7 @@ class Iteration():
         else:
             front_cyl_freq=-2.405*action_clipped[3]+9.21
 
+        top_cyl_offset = action_clipped[4] * 570
         top_cyl_amp = action_clipped[5] * 570
         top_cyl_phase = action_clipped[6] * 1.79
         
@@ -561,6 +566,7 @@ class Iteration():
         else:
             top_cyl_freq=-2.405*action_clipped[7]+9.21
             
+        bot_cyl_offset = action_clipped[8] * 570
         bot_cyl_amp = action_clipped[9] * 570
         bot_cyl_phase = action_clipped[10] * 1.79
         
@@ -568,31 +574,6 @@ class Iteration():
             bot_cyl_freq=0.0
         else:
             bot_cyl_freq=-2.405*action_clipped[11]+9.21
-        
-        front_cyl_offset_ramp = action_clipped[0] * 340
-        top_cyl_offset_ramp = action_clipped[4] * 340
-        bot_cyl_offset_ramp = action_clipped[8] * 340
-        
-        front_cyl_offset=front_cyl_offset_ramp + (self.state_front_cyl_offset[-1]*1000)
-        top_cyl_offset=top_cyl_offset_ramp + (self.state_top_cyl_offset[-1]*1000)
-        bot_cyl_offset=bot_cyl_offset_ramp + (self.state_bot_cyl_offset[-1]*1000)
-        
-        if front_cyl_offset > 1000:
-            front_cyl_offset=1000
-        if front_cyl_offset <-1000:
-            front_cyl_offset=-1000
-        if top_cyl_offset > 1000:
-            top_cyl_offset=1000
-        if top_cyl_offset <-1000:
-            top_cyl_offset=-1000
-        if bot_cyl_offset > 1000:
-            bot_cyl_offset=1000
-        if bot_cyl_offset <-1000:
-            bot_cyl_offset=-1000
-            
-        self.state_front_cyl_offset.append(front_cyl_offset/1000)
-        self.state_top_cyl_offset.append(top_cyl_offset/1000)
-        self.state_bot_cyl_offset.append(bot_cyl_offset/1000)
             
         if front_cyl_freq <= 5.0:
             front_cyl_freq = 0.0
